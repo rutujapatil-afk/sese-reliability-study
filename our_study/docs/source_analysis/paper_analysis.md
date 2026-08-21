@@ -2,230 +2,305 @@
 
 ## Source
 
-**Paper:** SeSE: Black-Box Uncertainty Quantification for Large Language Models Based on Structural Information Theory
+**Title:** SeSE: Black-Box Uncertainty Quantification for Large Language Models Based on Structural Information Theory
 
 **Authors:** Xingtao Zhao, Hao Peng, Dingli Su, Xianghua Zeng, Chunyang Liu, Jinzhi Liao, Philip S. Yu
 
-**Venue:** UAI 2026
+**Venue:** Proceedings of the 42nd Conference on Uncertainty in Artificial Intelligence (UAI 2026)
 
-**Primary source:** arXiv:2511.16275
+**Reference:** PMLR Volume 337, pages 8209–8237
 
 ---
 
 # 1. Research Problem
 
-_To be completed from the paper._
+## 1.1 Problem
 
-## 1.1 Why is the problem important?
+Large language models can produce plausible but incorrect responses.
 
-_To be completed._
+Uncertainty quantification attempts to estimate when an LLM is likely to be unreliable so that uncertain outputs can potentially be rejected or verified.
 
-## 1.2 What limitation in existing UQ methods do the authors identify?
+## 1.2 Limitation Identified by SeSE
 
-_To be completed._
+The authors argue that existing semantic uncertainty methods primarily represent semantic uncertainty using distributions or pairwise relationships and do not sufficiently capture the latent hierarchical structure of the semantic space.
 
----
+They also identify limited granularity for uncertainty estimation in long-form outputs containing multiple interwoven claims.
 
-# 2. SeSE's Core Idea
+## 1.3 Proposed Solution
 
-_To be completed._
-
-## 2.1 What is Semantic Structural Entropy?
-
-_To be completed._
-
-## 2.2 Why use structural information?
-
-_To be completed._
-
-## 2.3 What does "uncertainty" mean in this framework?
-
-_To be completed._
+SeSE introduces Semantic Structural Entropy, which represents the semantic space as a graph and constructs an optimal hierarchical abstraction using structural entropy minimization.
 
 ---
 
-# 3. Short-Form Methodology
+# 2. Core Idea
 
-## Step 1 — Response Sampling
+## 2.1 Semantic Space
 
-_To be completed._
+For short-form generation, multiple responses to the same query are represented as nodes in a semantic graph.
 
-### Inputs
+## 2.2 Directed Semantic Relationships
 
-_To be completed._
+Relationships between responses are estimated using Natural Language Inference.
 
-### Outputs
+The resulting graph is directed and weighted.
 
-_To be completed._
+## 2.3 Hierarchical Structure
 
----
+Instead of treating semantic clusters as a flat distribution, SeSE constructs a hierarchical encoding tree.
 
-## Step 2 — Semantic Graph Construction
+## 2.4 Structural Entropy
 
-_To be completed._
+The structural entropy of the optimized encoding tree is used as the uncertainty score.
 
-### NLI Model
-
-_To be completed._
-
-### Edge Construction
-
-_To be completed._
-
-### Edge Weight
-
-_To be completed._
+Higher SeSE corresponds to greater estimated uncertainty.
 
 ---
 
-## Step 3 — Hierarchical Abstraction
+# 3. Short-Form Pipeline
 
-_To be completed._
+The short-form methodology consists of three major stages:
 
-### Structural Entropy
+1. Response sampling
+2. Semantic graph construction
+3. Hierarchical abstraction
 
-_To be completed._
+## 3.1 Response Sampling
 
-### Encoding Tree
+For a query x:
 
-_To be completed._
+- Generate a greedy response.
+- Generate multiple stochastic responses.
+- Use the sampled responses to characterize the model's semantic response space.
 
-### Optimization
+### Parameters
 
-_To be completed._
+- Number of stochastic samples: N
+- Sampling temperature
+- Model
+- Dataset/task
 
-### Final SeSE Score
-
-_To be completed._
-
----
-
-# 4. Long-Form Methodology
-
-## Motivation
-
-_To be completed._
-
-## Claim Extraction
-
-_To be completed._
-
-## Claim-Response Bipartite Graph
-
-_To be completed._
-
-## Claim-Level Uncertainty
-
-_To be completed._
+_To be filled with exact experimental settings._
 
 ---
 
-# 5. Theoretical Claims
+## 3.2 Semantic Graph Construction
 
-## SeSE and Semantic Entropy
+Each sampled response is represented as a graph node.
 
-_To be completed._
+A Natural Language Inference model estimates directed semantic relationships between responses.
 
-## Generalization Relationship
+The graph is weighted according to the inferred semantic relationship.
 
-_To be completed._
+### Key Question
 
----
+Why is a directed graph preferable to a simple similarity graph?
 
-# 6. Baselines
-
-The paper compares SeSE against multiple uncertainty estimation approaches.
-
-_To be completed with descriptions of each baseline._
+_To be answered from the paper._
 
 ---
 
-# 7. Evaluation
+## 3.3 Hierarchical Abstraction
 
-## Datasets
+SeSE constructs an encoding tree over the semantic graph.
 
-_To be completed._
+The objective is to minimize structural entropy.
 
-## Models
+The resulting optimized tree represents a hierarchical organization of the semantic space.
 
-_To be completed._
+### Tree Height
 
-## Metrics
+K controls the depth of the hierarchical abstraction.
 
-_To be completed._
-
-## Experimental Protocol
-
-_To be completed._
+The effect of K must be analyzed carefully because it is a methodological hyperparameter.
 
 ---
 
-# 8. Main Results
+# 4. Long-Form Pipeline
 
-_To be completed._
+Long-form generation contains multiple potentially independent claims.
 
-## Short-Form Results
+SeSE extends the framework to estimate uncertainty at the claim level.
 
-_To be completed._
+## 4.1 Claim Decomposition
 
-## Long-Form Results
+A long-form response is decomposed into atomic claims.
 
-_To be completed._
+## 4.2 Claim-Response Graph
 
----
+A bipartite graph is constructed containing:
 
-# 9. Ablation Studies
+- sampled responses
+- extracted claims
 
-## Number of Samples
+Semantic entailment relationships connect responses and claims.
 
-_To be completed._
+## 4.3 Claim-Level Uncertainty
 
-## Encoding Tree Height
+The uncertainty of a claim is calculated using the structural entropy associated with its position in the optimized encoding tree.
 
-_To be completed._
-
-## Other Ablations
-
-_To be completed._
+This produces fine-grained uncertainty estimates for individual claims.
 
 ---
 
-# 10. Statistical Analysis
+# 5. Theoretical Positioning
 
-_To be completed._
+The authors state that SeSE generalizes Semantic Entropy.
 
----
+When the encoding tree is restricted to a single layer (K = 1), SeSE recovers semantic entropy.
 
-# 11. Authors' Conclusions
-
-_To be completed._
+This is important because SeSE can be interpreted as extending a flat semantic uncertainty representation into a hierarchical representation.
 
 ---
 
-# 12. Potential Research Gaps
+# 6. Evaluation
 
-This section must contain only gaps that are actually supported by the paper or clearly identified through our analysis.
+## 6.1 Datasets
 
-Potential questions to investigate:
+_To be extracted exactly from the paper._
 
-- Does uncertainty reliability vary systematically by task?
-- Does uncertainty reliability vary by error type?
-- How does response length affect uncertainty reliability?
-- How does model scale affect uncertainty reliability?
-- How stable is the uncertainty score under different sampling settings?
-- Does the optimal tree height generalize to unseen tasks?
-- Does high uncertainty correspond to a calibrated probability of error?
-- Are there systematic cases where the semantic structure appears confident despite an incorrect answer?
+## 6.2 Models
 
-These are research questions, not findings.
+_To be extracted exactly from the paper._
+
+## 6.3 Baselines
+
+_To be extracted exactly from the paper._
+
+## 6.4 Metrics
+
+The main uncertainty evaluation metrics include:
+
+- AUROC
+- AURAC
+
+### AUROC
+
+Measures the ability of an uncertainty estimator to distinguish correct from incorrect outputs.
+
+### AURAC
+
+Measures the relationship between uncertainty-based rejection and remaining accuracy.
 
 ---
 
-# 13. Questions We Need to Answer Before Designing Our Experiments
+# 7. Main Experimental Claim
 
-1. Which claims made by SeSE are directly supported by experiments?
-2. Which are theoretical claims?
-3. Which experimental variables have already been thoroughly tested?
-4. Which variables have only been tested indirectly?
-5. Which potentially important variables have not been studied?
-6. What would constitute a meaningful extension rather than a minor reproduction?
+The paper reports that SeSE outperforms the evaluated uncertainty baselines across 24 model–dataset combinations.
+
+This claim must be separated from the broader question of whether SeSE is reliable under conditions not covered or not deeply analyzed by the original experiments.
+
+---
+
+# 8. Ablation / Sensitivity Questions
+
+The paper investigates methodological parameters including:
+
+- number of sampled responses;
+- encoding tree height;
+- model;
+- dataset.
+
+These experiments are important because they may reveal whether SeSE's performance depends on particular configuration choices.
+
+---
+
+# 9. What SeSE Establishes
+
+_To be completed after detailed paper analysis._
+
+---
+
+# 10. What SeSE Does Not Establish
+
+This section must be evidence-based.
+
+Potential questions include:
+
+- Calibration of SeSE as an actual probability of correctness.
+- Robustness to different error mechanisms.
+- Generalization to tasks outside the evaluated benchmark distribution.
+- Stability under changes in generation settings.
+- Relationship between uncertainty and response complexity.
+- Whether uncertainty failures have identifiable structural causes.
+
+These are hypotheses/questions, not established limitations.
+
+---
+
+# 11. Candidate Research Gaps
+
+A candidate gap becomes part of our research only if detailed analysis confirms that the original work does not already answer it adequately.
+
+Potential directions:
+
+### A. Reliability Across Error Types
+
+Does SeSE behave differently for different kinds of incorrect answers?
+
+### B. Calibration
+
+Does a SeSE score correspond consistently to an empirical probability of correctness?
+
+### C. Robustness
+
+How stable is SeSE under changes in sampling, prompt formulation, and generation settings?
+
+### D. Complexity
+
+Does the relationship between SeSE and correctness change with response length or reasoning complexity?
+
+### E. Failure Analysis
+
+What semantic structures cause SeSE to assign low uncertainty to incorrect answers?
+
+### F. Cross-Task Generalization
+
+Does a configuration that works well on one task transfer to other tasks?
+
+---
+
+# 12. Research Design Principle
+
+Our study must not assume that SeSE is flawed.
+
+The study will test competing possibilities:
+
+1. SeSE is robust across conditions.
+2. SeSE has systematic weaknesses.
+3. SeSE's weaknesses are concentrated in specific conditions.
+4. Some weaknesses can be explained by the construction of the semantic graph.
+5. An improved methodology may or may not address those weaknesses.
+
+---
+
+# 13. Preliminary Standalone Contribution
+
+The final contribution should be independently understandable without requiring knowledge of the SeSE repository.
+
+The project should contain:
+
+- an independently defined research question;
+- explicit hypotheses;
+- a reproducible experimental protocol;
+- baseline comparisons;
+- systematic evaluation;
+- failure analysis;
+- statistical analysis;
+- documented conclusions;
+- limitations;
+- and, only if justified by evidence, a proposed methodological improvement.
+
+---
+
+# 14. Open Questions
+
+1. What exactly determines SeSE's uncertainty score?
+2. How sensitive is the score to sampling?
+3. How sensitive is it to the NLI model?
+4. How sensitive is it to graph sparsification?
+5. How sensitive is it to encoding-tree depth?
+6. Does uncertainty remain reliable across different error types?
+7. Is the score calibrated?
+8. What are the most important failure modes?
+9. Can those failure modes be predicted from measurable properties of the semantic graph?
+10. Can an improvement be designed from those observations?
