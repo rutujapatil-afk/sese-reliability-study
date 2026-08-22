@@ -1,0 +1,34 @@
+# Initial configuration for the SeSE semantic-structure robustness study
+
+study:
+  name: "semantic_structure_robustness"
+  version: "0.1"
+
+baseline:
+  tree_depth: 3
+
+perturbations:
+  edge_weight_noise:
+    enabled: true
+    levels:
+      - 0.00
+      - 0.05
+      - 0.10
+      - 0.20
+
+  edge_dropout:
+    enabled: true
+    levels:
+      - 0.00
+      - 0.05
+      - 0.10
+      - 0.20
+
+evaluation:
+  random_seeds:
+    - 42
+    - 123
+    - 2026
+
+output:
+  directory: "../results/semantic_perturbation"
