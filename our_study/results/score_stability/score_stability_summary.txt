@@ -1,0 +1,16 @@
+SeSE Score Stability Experiment
+================================
+
+Question: Who discovered penicillin?
+Sample size: 6
+Repeats: 20
+Similarity threshold: 0.30
+
+Mean structural entropy: -1.73049123
+SD structural entropy: 0.23035965
+Minimum structural entropy: -2.18083072
+Maximum structural entropy: -1.42477334
+Entropy range: 0.75605738
+Coefficient of variation: 0.13311807
+
+Interpretation should be made only after examining the complete results.

@@ -1,0 +1,16 @@
+experiment,metric,value,interpretation
+threshold_sensitivity,entropy_range,0.00019788742065429688,Small range indicates limited entropy sensitivity across tested clustering thresholds.
+threshold_sensitivity,thresholds_tested,5.0,Five clustering thresholds were evaluated.
+threshold_sensitivity,cluster_count_range,1.0,Cluster count changed within the tested threshold range.
+semantic_perturbation,noise_max_relative_entropy_change,0.3208755336720429,Maximum observed relative entropy change under edge-weight noise.
+semantic_perturbation,dropout_max_relative_entropy_change,0.1442627366398401,Maximum observed relative entropy change under edge dropout.
+semantic_perturbation,noise_graph_change_at_max_level,0.2443467209181174,Graph change observed at the highest tested edge-weight noise level.
+semantic_perturbation,dropout_graph_change_at_max_level,0.0004062149443764,Graph change observed at the highest tested edge-dropout level.
+score_stability,repeat_count,11.0,Repeated evaluations available in the stability dataset.
+score_stability,entropy_std,0.8492345154538476,Standard deviation of structural entropy across repeats.
+score_stability,entropy_range,2.260093331336975,Observed structural-entropy range across repeats.
+complexity,complexity_entropy_range,0.42294955253601074,Structural entropy variation across tested semantic/reasoning complexity conditions.
+complexity,complexity_levels,5.0,Number of distinct complexity conditions tested.
+failure_mechanism,confident_failure_count,2.0,Number of tested cases classified as confident failures.
+failure_mechanism,mean_incorrect_fraction,0.3333333333333333,Mean incorrect-response fraction across tested cases.
+failure_mechanism,mean_cluster_imbalance,2.6666666666666665,Mean cluster imbalance across tested cases.

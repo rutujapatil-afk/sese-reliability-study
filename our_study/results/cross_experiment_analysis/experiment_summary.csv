@@ -1,0 +1,6 @@
+experiment,available,rows
+threshold_sensitivity,True,5
+semantic_perturbation,True,24
+score_stability,True,11
+complexity,True,5
+failure_mechanism,True,3

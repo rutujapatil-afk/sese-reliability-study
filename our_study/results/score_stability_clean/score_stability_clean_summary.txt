@@ -1,0 +1,12 @@
+SeSE Clean Score Stability Experiment
+Original work: UNMODIFIED
+
+Repeats: 10
+Similarity threshold: 0.3
+Mean score: -1.4263278246
+Standard deviation: 0.0000000000
+Minimum score: -1.4263278246
+Maximum score: -1.4263278246
+Range: 0.0000000000
+Coefficient variation: 0.0000000000
+Bootstrap 95% CI: [-1.4263278246, -1.4263278246]

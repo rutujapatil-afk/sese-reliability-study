@@ -9,14 +9,19 @@ the locally downloaded NLI and sentence-embedding models.
 
 The OpenAI enhancement step from the original implementation is
 intentionally omitted for this controlled threshold experiment.
+
+Results are saved to:
+    our_study/results/threshold_sensitivity_results.csv
 """
 
 from __future__ import annotations
 
 import itertools
+import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 from sentence_transformers import SentenceTransformer
 from sklearn.cluster import AgglomerativeClustering
@@ -28,6 +33,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 # ---------------------------------------------------------------------
 
 NLI_MODEL_NAME = "microsoft/deberta-v2-xlarge-mnli"
+
 SENTENCE_EMB_MODEL_NAME = (
     "tomaarsen/static-similarity-mrl-multilingual-v1"
 )
@@ -38,6 +44,10 @@ DEVICE = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
 )
 
+ROOT = Path(__file__).resolve().parents[1]
+RESULTS_DIR = ROOT / "results"
+OUTPUT_PATH = RESULTS_DIR / "threshold_sensitivity_results.csv"
+
 
 # ---------------------------------------------------------------------
 # Model state
@@ -45,11 +55,10 @@ DEVICE = torch.device(
 
 # IMPORTANT:
 # Models are intentionally NOT loaded at module import time.
-# On Windows, multiprocessing uses "spawn", which re-imports this file
-# in child processes. Loading a 1.77 GB model at import time therefore
-# caused recursive model initialization and the bootstrapping error.
 #
-# Everything in original_work/ remains untouched.
+# Windows uses multiprocessing "spawn". Loading a large model during
+# module import can cause recursive initialization / bootstrapping
+# errors in child processes.
 
 entailment_model = None
 entailment_tokenizer = None
@@ -58,6 +67,7 @@ sentence_embedding_model = None
 
 def load_models() -> None:
     """Load the local models once, from the main process only."""
+
     global entailment_model
     global entailment_tokenizer
     global sentence_embedding_model
@@ -81,8 +91,6 @@ def load_models() -> None:
         .eval()
     )
 
-    # The DeBERTa model provides a SentencePiece tokenizer.
-    # use_fast=False avoids the tiktoken/SentencePiece conversion path.
     entailment_tokenizer = AutoTokenizer.from_pretrained(
         NLI_MODEL_NAME,
         use_fast=False,
@@ -110,13 +118,18 @@ def run_textual_entailment(
     pairs: list[tuple[str, str]],
     batch_size: int = 16,
 ) -> list[list[float]]:
-    """Return [entailment, neutral, contradiction] probabilities."""
+    """
+    Return probabilities in the order:
+
+        [entailment, neutral, contradiction]
+    """
 
     load_models()
 
     results = []
 
     for start in range(0, len(pairs), batch_size):
+
         batch = pairs[start:start + batch_size]
 
         inputs = entailment_tokenizer(
@@ -135,27 +148,45 @@ def run_textual_entailment(
         with torch.no_grad():
             logits = entailment_model(**inputs).logits
 
-        probs = torch.softmax(logits, dim=1).cpu().tolist()
+        probs = torch.softmax(
+            logits,
+            dim=1,
+        ).cpu().tolist()
 
         # DeBERTa MNLI label order:
         # contradiction, neutral, entailment
         for p in probs:
-            results.append([p[2], p[1], p[0]])
+            results.append(
+                [
+                    p[2],
+                    p[1],
+                    p[0],
+                ]
+            )
 
     return results
 
 
-_entailment_cache: dict[tuple[str, ...], np.ndarray] = {}
+_entailment_cache: dict[
+    tuple[str, ...],
+    np.ndarray,
+] = {}
 
 
 def compute_entailment_scores(
     strings_list: list[str],
 ) -> np.ndarray:
-    """Compute symmetric pairwise entailment matrix, with in-process caching."""
+    """
+    Compute symmetric pairwise entailment matrix.
+
+    Results are cached so repeated threshold calculations do not
+    repeatedly run the NLI model.
+    """
 
     key = tuple(strings_list)
 
     cached = _entailment_cache.get(key)
+
     if cached is not None:
         return cached.copy()
 
@@ -167,14 +198,20 @@ def compute_entailment_scores(
     )
 
     pairs = list(
-        itertools.combinations(range(n), 2)
+        itertools.combinations(
+            range(n),
+            2,
+        )
     )
 
     if not pairs:
         return scores
 
     sent_pairs = [
-        (strings_list[i], strings_list[j])
+        (
+            strings_list[i],
+            strings_list[j],
+        )
         for i, j in pairs
     ]
 
@@ -182,7 +219,10 @@ def compute_entailment_scores(
         sent_pairs
     )
 
-    for (i, j), prob in zip(pairs, probabilities):
+    for (i, j), prob in zip(
+        pairs,
+        probabilities,
+    ):
         scores[i, j] = prob[0]
         scores[j, i] = prob[0]
 
@@ -230,24 +270,40 @@ def is_connected(
         return x
 
     def union(a, b):
+
         ra = find(a)
         rb = find(b)
 
         if ra != rb:
             parent[rb] = ra
 
-    for i, j in np.argwhere(adjacency_matrix > 0):
-        union(int(i), int(j))
+    for i, j in np.argwhere(
+        adjacency_matrix > 0
+    ):
+        union(
+            int(i),
+            int(j),
+        )
 
     components = {}
 
     for i in range(n):
+
         root = find(i)
-        components.setdefault(root, []).append(i)
 
-    component_list = list(components.values())
+        components.setdefault(
+            root,
+            [],
+        ).append(i)
 
-    return len(component_list) == 1, component_list
+    component_list = list(
+        components.values()
+    )
+
+    return (
+        len(component_list) == 1,
+        component_list,
+    )
 
 
 def make_connected(
@@ -255,8 +311,8 @@ def make_connected(
     responses: list[str],
 ) -> np.ndarray:
     """
-    Connect disconnected components using the highest
-    entailment representative edges.
+    Connect disconnected components using representative
+    entailment edges.
 
     This mirrors the relevant behavior of the original SeSE code.
     """
@@ -271,9 +327,10 @@ def make_connected(
     representatives = []
 
     for component in components:
-        # For this small controlled experiment, use the first
-        # node of each component as representative.
-        representatives.append(component[0])
+
+        representatives.append(
+            component[0]
+        )
 
     representative_pairs = list(
         itertools.combinations(
@@ -286,7 +343,10 @@ def make_connected(
         return adjacency_matrix
 
     entail_pairs = [
-        (responses[i], responses[j])
+        (
+            responses[i],
+            responses[j],
+        )
         for i, j in representative_pairs
     ]
 
@@ -295,20 +355,34 @@ def make_connected(
     )
 
     edges = sorted(
-        zip(representative_pairs, weights),
+        zip(
+            representative_pairs,
+            weights,
+        ),
         key=lambda x: x[1][0],
         reverse=True,
     )
 
-    parent = list(range(adjacency_matrix.shape[0]))
+    parent = list(
+        range(
+            adjacency_matrix.shape[0]
+        )
+    )
 
     def find(x):
+
         while parent[x] != x:
-            parent[x] = parent[parent[x]]
+
+            parent[x] = parent[
+                parent[x]
+            ]
+
             x = parent[x]
+
         return x
 
     def union(a, b):
+
         ra = find(a)
         rb = find(b)
 
@@ -316,12 +390,22 @@ def make_connected(
             return False
 
         parent[rb] = ra
+
         return True
 
     for (u, v), weight in edges:
+
         if union(u, v):
-            adjacency_matrix[u, v] = weight[0]
-            adjacency_matrix[v, u] = weight[0]
+
+            adjacency_matrix[
+                u,
+                v,
+            ] = weight[0]
+
+            adjacency_matrix[
+                v,
+                u,
+            ] = weight[0]
 
     return adjacency_matrix
 
@@ -334,18 +418,24 @@ def build_graph_with_threshold(
     responses: list[str],
     question: str,
     similarity_threshold: float,
-) -> tuple[np.ndarray, list[int], list[str]]:
+) -> tuple[
+    np.ndarray,
+    list[int],
+    list[str],
+]:
     """
     Build the semantic graph while varying only the
     clustering similarity threshold.
 
-    The controlled experiment uses the supplied responses directly.
+    The supplied responses are used directly.
     """
 
     # No OpenAI enhancement here.
     enhanced = list(responses)
 
-    print("  Computing sentence similarities...")
+    print(
+        "  Computing sentence similarities..."
+    )
 
     cos_sim = (
         compute_sentence_transformer_similirities(
@@ -353,7 +443,9 @@ def build_graph_with_threshold(
         )
     )
 
-    print("  Computing NLI similarities...")
+    print(
+        "  Computing NLI similarities..."
+    )
 
     entail_sim = compute_entailment_scores(
         enhanced
@@ -382,16 +474,32 @@ def build_graph_with_threshold(
         )
     ]
 
-    if np.all(non_diag == 0.0):
-        cluster_ids = [0] * len(enhanced)
+    if np.all(
+        non_diag == 0.0
+    ):
 
-    elif np.all(non_diag == 1.0):
-        cluster_ids = list(range(len(enhanced)))
+        cluster_ids = [
+            0
+        ] * len(enhanced)
+
+    elif np.all(
+        non_diag == 1.0
+    ):
+
+        cluster_ids = list(
+            range(
+                len(enhanced)
+            )
+        )
 
     else:
+
         clusterer = AgglomerativeClustering(
             n_clusters=None,
-            distance_threshold=1.0 - similarity_threshold,
+            distance_threshold=(
+                1.0
+                - similarity_threshold
+            ),
             metric="precomputed",
             linkage="average",
         )
@@ -415,24 +523,35 @@ def build_graph_with_threshold(
             range(n),
             2,
         )
-        if cluster_ids[i] == cluster_ids[j]
+        if cluster_ids[i]
+        == cluster_ids[j]
     ]
 
     if pairs:
+
         print(
-            f"  Using entailment scores for "
+            "  Using entailment scores for "
             f"{len(pairs)} intra-cluster edges..."
         )
 
-        # The full pairwise matrix was already computed above and is
-        # cached, so this does not run the NLI model again.
-        edge_scores = compute_entailment_scores(
-            enhanced
+        # Already cached from above.
+        edge_scores = (
+            compute_entailment_scores(
+                enhanced
+            )
         )
 
         for i, j in pairs:
-            adjacency[i, j] = edge_scores[i, j]
-            adjacency[j, i] = edge_scores[j, i]
+
+            adjacency[
+                i,
+                j,
+            ] = edge_scores[i, j]
+
+            adjacency[
+                j,
+                i,
+            ] = edge_scores[j, i]
 
     adjacency = make_connected(
         adjacency,
@@ -440,7 +559,9 @@ def build_graph_with_threshold(
     )
 
     return (
-        adjacency.astype(np.float32),
+        adjacency.astype(
+            np.float32
+        ),
         cluster_ids,
         enhanced,
     )
@@ -458,10 +579,6 @@ def compute_structural_entropy(
     definition used by the original implementation.
     """
 
-    # Import only the structural entropy module.
-    # This does not initialize the NLI/OpenAI resources.
-    import sys
-
     project_root = (
         Path(__file__).resolve().parents[1]
     )
@@ -472,16 +589,23 @@ def compute_structural_entropy(
         / "SeSE"
     )
 
-    sys.path.insert(
-        0,
-        str(original_sese),
+    original_sese_str = str(
+        original_sese
     )
+
+    if original_sese_str not in sys.path:
+        sys.path.insert(
+            0,
+            original_sese_str,
+        )
 
     from sentence_structural_entropy.src.uncertainty_measures.structural_entropy import (
         compute_se,
     )
 
-    return float(compute_se(adjacency))
+    return float(
+        compute_se(adjacency)
+    )
 
 
 # ---------------------------------------------------------------------
@@ -501,29 +625,55 @@ def summarize_graph(
         k=1,
     )
 
-    edge_values = adjacency[edge_mask]
+    edge_values = adjacency[
+        edge_mask
+    ]
 
     positive_edges = (
         edge_values > 0
     )
 
+    n_nodes = adjacency.shape[0]
+
+    possible_edges = (
+        n_nodes * (n_nodes - 1) // 2
+    )
+
+    n_edges = int(
+        np.sum(positive_edges)
+    )
+
+    density = (
+        n_edges / possible_edges
+        if possible_edges > 0
+        else 0.0
+    )
+
     return {
-        "n_nodes": adjacency.shape[0],
+        "n_nodes": n_nodes,
+
         "n_clusters": len(
             set(cluster_ids)
         ),
-        "n_edges": int(
-            np.sum(positive_edges)
+
+        "n_edges": n_edges,
+
+        "edge_density": float(
+            density
         ),
+
         "mean_edge_weight": (
             float(
                 edge_values[
                     positive_edges
                 ].mean()
             )
-            if np.any(positive_edges)
+            if np.any(
+                positive_edges
+            )
             else 0.0
         ),
+
         "total_edge_weight": float(
             edge_values.sum()
         ),
@@ -536,9 +686,7 @@ def summarize_graph(
 
 def main():
 
-    # Windows uses multiprocessing "spawn". Keeping model initialization
-    # inside main prevents child processes from recursively loading the
-    # 1.77 GB NLI model during module import.
+    # Windows-safe model initialization.
     load_models()
 
     question = (
@@ -563,6 +711,8 @@ def main():
         "Original work: UNMODIFIED"
     )
     print()
+
+    records = []
 
     for threshold in THRESHOLDS:
 
@@ -619,7 +769,90 @@ def main():
             f"{cluster_ids}"
         )
 
+        # -------------------------------------------------------------
+        # SAVE RECORD
+        # -------------------------------------------------------------
+
+        records.append(
+            {
+                "threshold": float(
+                    threshold
+                ),
+                "question": question,
+                "n_nodes": summary[
+                    "n_nodes"
+                ],
+                "n_clusters": summary[
+                    "n_clusters"
+                ],
+                "n_edges": summary[
+                    "n_edges"
+                ],
+                "edge_density": summary[
+                    "edge_density"
+                ],
+                "mean_edge_weight": summary[
+                    "mean_edge_weight"
+                ],
+                "total_edge_weight": summary[
+                    "total_edge_weight"
+                ],
+                "structural_entropy": float(
+                    structural_entropy
+                ),
+                "cluster_ids": ",".join(
+                    str(x)
+                    for x in cluster_ids
+                ),
+            }
+        )
+
         print()
+
+    # -----------------------------------------------------------------
+    # Save threshold-sensitivity results
+    # -----------------------------------------------------------------
+
+    RESULTS_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    results_df = pd.DataFrame(
+        records
+    )
+
+    results_df.to_csv(
+        OUTPUT_PATH,
+        index=False,
+    )
+
+    print("=" * 50)
+    print("RESULTS SAVED")
+    print("=" * 50)
+    print(
+        OUTPUT_PATH
+    )
+    print()
+    print(
+        f"Rows saved: {len(results_df)}"
+    )
+    print()
+    print(
+        results_df[
+            [
+                "threshold",
+                "n_clusters",
+                "n_edges",
+                "edge_density",
+                "mean_edge_weight",
+                "total_edge_weight",
+                "structural_entropy",
+            ]
+        ].to_string(
+            index=False
+        )
+    )
 
 
 if __name__ == "__main__":

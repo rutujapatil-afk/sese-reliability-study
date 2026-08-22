@@ -1,0 +1,723 @@
+[
+  {
+    "case_id": "factual_001",
+    "category": "factual",
+    "question": "Who discovered penicillin?",
+    "responses": [
+      "Alexander Fleming discovered penicillin.",
+      "Penicillin was discovered by Alexander Fleming.",
+      "Alexander Fleming is credited with discovering penicillin.",
+      "Fleming discovered penicillin in 1928.",
+      "The discovery of penicillin is attributed to Alexander Fleming.",
+      "Marie Curie discovered penicillin."
+    ],
+    "correctness": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+    ],
+    "error_type": [
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "factual"
+    ],
+    "enhanced_responses": [
+      "Alexander Fleming discovered penicillin.",
+      "Penicillin was discovered by Alexander Fleming.",
+      "Alexander Fleming is credited with discovering penicillin.",
+      "Fleming discovered penicillin in 1928.",
+      "The discovery of penicillin is attributed to Alexander Fleming.",
+      "Marie Curie discovered penicillin."
+    ],
+    "cluster_ids": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    "adjacency_matrix": [
+      [
+        0.0,
+        0.9983876943588257,
+        0.9943899512290955,
+        0.000794815830886364,
+        0.996605634689331,
+        0.0002644479973241687
+      ],
+      [
+        0.9983876943588257,
+        0.0,
+        0.9971562623977661,
+        0.0011441182577982545,
+        0.997760534286499,
+        0.0
+      ],
+      [
+        0.9943899512290955,
+        0.9971562623977661,
+        0.0,
+        0.0008274822612293065,
+        0.9987053871154785,
+        0.0
+      ],
+      [
+        0.000794815830886364,
+        0.0011441182577982545,
+        0.0008274822612293065,
+        0.0,
+        0.3748895227909088,
+        0.0
+      ],
+      [
+        0.996605634689331,
+        0.997760534286499,
+        0.9987053871154785,
+        0.3748895227909088,
+        0.0,
+        0.0
+      ],
+      [
+        0.0002644479973241687,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "metrics": {
+      "n_nodes": 6,
+      "n_edges": 11,
+      "edge_density": 0.7333333333333333,
+      "mean_edge_weight": 0.5782659864741039,
+      "total_edge_weight": 6.360925851215143
+    },
+    "structural_entropy": -1.4776801447359127
+  },
+  {
+    "case_id": "factual_002",
+    "category": "factual",
+    "question": "What is the capital of France?",
+    "responses": [
+      "The capital of France is Paris.",
+      "Paris is the capital city of France.",
+      "France has its capital in Paris.",
+      "The French capital is Paris.",
+      "Paris serves as the capital of France.",
+      "The capital of France is Berlin."
+    ],
+    "correctness": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+    ],
+    "error_type": [
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "factual"
+    ],
+    "enhanced_responses": [
+      "The capital of France is Paris.",
+      "Paris is the capital city of France.",
+      "France has its capital in Paris.",
+      "The French capital is Paris.",
+      "Paris serves as the capital of France.",
+      "The capital of France is Berlin."
+    ],
+    "cluster_ids": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    "adjacency_matrix": [
+      [
+        0.0,
+        0.9967413544654846,
+        0.9982345104217529,
+        0.9976614713668823,
+        0.9974886178970337,
+        0.0003845113969873637
+      ],
+      [
+        0.9967413544654846,
+        0.0,
+        0.9975155591964722,
+        0.9980950951576233,
+        0.9972795844078064,
+        0.0
+      ],
+      [
+        0.9982345104217529,
+        0.9975155591964722,
+        0.0,
+        0.9976364374160767,
+        0.9972864389419556,
+        0.0
+      ],
+      [
+        0.9976614713668823,
+        0.9980950951576233,
+        0.9976364374160767,
+        0.0,
+        0.9974430799484253,
+        0.0
+      ],
+      [
+        0.9974886178970337,
+        0.9972795844078064,
+        0.9972864389419556,
+        0.9974430799484253,
+        0.0,
+        0.0
+      ],
+      [
+        0.0003845113969873637,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "metrics": {
+      "n_nodes": 6,
+      "n_edges": 11,
+      "edge_density": 0.7333333333333333,
+      "mean_edge_weight": 0.9068878782378637,
+      "total_edge_weight": 9.9757666606165
+    },
+    "structural_entropy": -1.6096353933889438
+  },
+  {
+    "case_id": "factual_003",
+    "category": "factual",
+    "question": "Which planet is known as the Red Planet?",
+    "responses": [
+      "Mars is known as the Red Planet.",
+      "The Red Planet is Mars.",
+      "Mars has the nickname the Red Planet.",
+      "The planet called the Red Planet is Mars.",
+      "Mars is commonly known as the Red Planet.",
+      "Jupiter is known as the Red Planet."
+    ],
+    "correctness": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+    ],
+    "error_type": [
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "factual"
+    ],
+    "enhanced_responses": [
+      "Mars is known as the Red Planet.",
+      "The Red Planet is Mars.",
+      "Mars has the nickname the Red Planet.",
+      "The planet called the Red Planet is Mars.",
+      "Mars is commonly known as the Red Planet.",
+      "Jupiter is known as the Red Planet."
+    ],
+    "cluster_ids": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    "adjacency_matrix": [
+      [
+        0.0,
+        0.9959320425987244,
+        0.9985496401786804,
+        0.9969028830528259,
+        0.8315206170082092,
+        0.0007022166973911226
+      ],
+      [
+        0.9959320425987244,
+        0.0,
+        0.9896184802055359,
+        0.9946421384811401,
+        0.894776463508606,
+        0.0
+      ],
+      [
+        0.9985496401786804,
+        0.9896184802055359,
+        0.0,
+        0.9973330497741699,
+        0.9716972708702087,
+        0.0
+      ],
+      [
+        0.9969028830528259,
+        0.9946421384811401,
+        0.9973330497741699,
+        0.0,
+        0.9135979413986206,
+        0.0
+      ],
+      [
+        0.8315206170082092,
+        0.894776463508606,
+        0.9716972708702087,
+        0.9135979413986206,
+        0.0,
+        0.0
+      ],
+      [
+        0.0007022166973911226,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "metrics": {
+      "n_nodes": 6,
+      "n_edges": 11,
+      "edge_density": 0.7333333333333333,
+      "mean_edge_weight": 0.871388431252192,
+      "total_edge_weight": 9.585272743774112
+    },
+    "structural_entropy": -1.6093005644951779
+  },
+  {
+    "case_id": "factual_004",
+    "category": "factual",
+    "question": "What is the largest planet in our solar system?",
+    "responses": [
+      "Jupiter is the largest planet in our solar system.",
+      "The largest planet is Jupiter.",
+      "Jupiter has the greatest size of all planets in our solar system.",
+      "Our solar system's largest planet is Jupiter.",
+      "Jupiter is larger than every other planet in the solar system.",
+      "Saturn is the largest planet in our solar system."
+    ],
+    "correctness": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+    ],
+    "error_type": [
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "factual"
+    ],
+    "enhanced_responses": [
+      "Jupiter is the largest planet in our solar system.",
+      "The largest planet is Jupiter.",
+      "Jupiter has the greatest size of all planets in our solar system.",
+      "Our solar system's largest planet is Jupiter.",
+      "Jupiter is larger than every other planet in the solar system.",
+      "Saturn is the largest planet in our solar system."
+    ],
+    "cluster_ids": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    "adjacency_matrix": [
+      [
+        0.0,
+        0.9980857372283936,
+        0.9942877888679504,
+        0.9988663196563721,
+        0.8690667152404785,
+        0.0006224316894076765
+      ],
+      [
+        0.9980857372283936,
+        0.0,
+        0.8622725605964661,
+        0.8028801083564758,
+        0.34820425510406494,
+        0.0
+      ],
+      [
+        0.9942877888679504,
+        0.8622725605964661,
+        0.0,
+        0.9972363710403442,
+        0.9882779717445374,
+        0.0
+      ],
+      [
+        0.9988663196563721,
+        0.8028801083564758,
+        0.9972363710403442,
+        0.0,
+        0.34055396914482117,
+        0.0
+      ],
+      [
+        0.8690667152404785,
+        0.34820425510406494,
+        0.9882779717445374,
+        0.34055396914482117,
+        0.0,
+        0.0
+      ],
+      [
+        0.0006224316894076765,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "metrics": {
+      "n_nodes": 6,
+      "n_edges": 11,
+      "edge_density": 0.7333333333333333,
+      "mean_edge_weight": 0.7454867480608466,
+      "total_edge_weight": 8.200354228669312
+    },
+    "structural_entropy": -1.5977495414143839
+  },
+  {
+    "case_id": "factual_005",
+    "category": "factual",
+    "question": "What gas do humans need to breathe?",
+    "responses": [
+      "Humans need oxygen to breathe.",
+      "Oxygen is the gas humans require for respiration.",
+      "People need oxygen for breathing.",
+      "The gas humans breathe to support respiration is oxygen.",
+      "Humans require oxygen to survive.",
+      "Humans need carbon dioxide to breathe."
+    ],
+    "correctness": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+    ],
+    "error_type": [
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "factual"
+    ],
+    "enhanced_responses": [
+      "Humans need oxygen to breathe.",
+      "Oxygen is the gas humans require for respiration.",
+      "People need oxygen for breathing.",
+      "The gas humans breathe to support respiration is oxygen.",
+      "Humans require oxygen to survive.",
+      "Humans need carbon dioxide to breathe."
+    ],
+    "cluster_ids": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    "adjacency_matrix": [
+      [
+        0.0,
+        0.9745469689369202,
+        0.9983463287353516,
+        0.9774277806282043,
+        0.5805188417434692,
+        0.0008517635869793594
+      ],
+      [
+        0.9745469689369202,
+        0.0,
+        0.998076319694519,
+        0.9911853671073914,
+        0.9725419282913208,
+        0.0
+      ],
+      [
+        0.9983463287353516,
+        0.998076319694519,
+        0.0,
+        0.9797429442405701,
+        0.6259118318557739,
+        0.0
+      ],
+      [
+        0.9774277806282043,
+        0.9911853671073914,
+        0.9797429442405701,
+        0.0,
+        0.6602228283882141,
+        0.0
+      ],
+      [
+        0.5805188417434692,
+        0.9725419282913208,
+        0.6259118318557739,
+        0.6602228283882141,
+        0.0,
+        0.0
+      ],
+      [
+        0.0008517635869793594,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "metrics": {
+      "n_nodes": 6,
+      "n_edges": 11,
+      "edge_density": 0.7333333333333333,
+      "mean_edge_weight": 0.7963066275644285,
+      "total_edge_weight": 8.759372903208714
+    },
+    "structural_entropy": -1.604403563286757
+  },
+  {
+    "case_id": "reasoning_001",
+    "category": "reasoning",
+    "question": "If all A are B and all B are C, must all A be C?",
+    "responses": [
+      "Yes. If all A are B and all B are C, then all A are C.",
+      "Yes, the conclusion follows by transitivity.",
+      "Every A belongs to B, and every B belongs to C, so every A belongs to C.",
+      "Yes. This is a valid transitive implication.",
+      "The answer is yes because A is a subset of B and B is a subset of C.",
+      "No. A objects can be B without being C."
+    ],
+    "correctness": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+    ],
+    "error_type": [
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "reasoning"
+    ],
+    "enhanced_responses": [
+      "Yes. If all A are B and all B are C, then all A are C.",
+      "Yes, the conclusion follows by transitivity.",
+      "Every A belongs to B, and every B belongs to C, so every A belongs to C.",
+      "Yes. This is a valid transitive implication.",
+      "The answer is yes because A is a subset of B and B is a subset of C.",
+      "No. A objects can be B without being C."
+    ],
+    "cluster_ids": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      2
+    ],
+    "adjacency_matrix": [
+      [
+        0.0,
+        0.16707241535186768,
+        0.9805799126625061,
+        0.0,
+        0.672443687915802,
+        0.0
+      ],
+      [
+        0.16707241535186768,
+        0.0,
+        0.0,
+        0.791459858417511,
+        0.0,
+        0.025946641340851784
+      ],
+      [
+        0.9805799126625061,
+        0.0,
+        0.0,
+        0.0,
+        0.7840666770935059,
+        0.0
+      ],
+      [
+        0.0,
+        0.791459858417511,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.672443687915802,
+        0.0,
+        0.7840666770935059,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.025946641340851784,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "metrics": {
+      "n_nodes": 6,
+      "n_edges": 6,
+      "edge_density": 0.4,
+      "mean_edge_weight": 0.5702615321303407,
+      "total_edge_weight": 3.4215691927820444
+    },
+    "structural_entropy": -1.5806075226627123
+  },
+  {
+    "case_id": "reasoning_002",
+    "category": "reasoning",
+    "question": "If a number is divisible by 4, must it be even?",
+    "responses": [
+      "Yes. Every number divisible by 4 is even.",
+      "Yes, divisibility by 4 implies divisibility by 2.",
+      "A number divisible by 4 must be even.",
+      "Yes. Four is an even number, so every multiple of four is even.",
+      "Divisibility by 4 guarantees that the number is even.",
+      "No. Some numbers divisible by 4 are odd."
+    ],
+    "correctness": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+    ],
+    "error_type": [
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "reasoning"
+    ],
+    "enhanced_responses": [
+      "Yes. Every number divisible by 4 is even.",
+      "Yes, divisibility by 4 implies divisibility by 2.",
+      "A number divisible by 4 must be even.",
+      "Yes. Four is an even number, so every multiple of four is even.",
+      "Divisibility by 4 guarantees that the number is even.",
+      "No. Some numbers divisible by 4 are odd."
+    ],
+    "cluster_ids": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      2
+    ],
+    "adjacency_matrix": [
+      [
+        0.0,
+        0.01945076510310173,
+        0.9247123003005981,
+        0.919827401638031,
+        0.8470268249511719,
+        0.0
+      ],
+      [
+        0.01945076510310173,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.022191906347870827
+      ],
+      [
+        0.9247123003005981,
+        0.0,
+        0.0,
+        0.7316697835922241,
+        0.9691863059997559,
+        0.0
+      ],
+      [
+        0.919827401638031,
+        0.0,
+        0.7316697835922241,
+        0.0,
+        0.6468106508255005,
+        0.0
+      ],
+      [
+        0.8470268249511719,
+        0.0,
+        0.9691863059997559,
+        0.6468106508255005,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.022191906347870827,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "metrics": {
+      "n_nodes": 6,
+      "n_edges": 8,
+      "edge_density": 0.5333333333333333,
+      "mean_edge_weight": 0.6351094923447818,
+      "total_edge_weight": 5.080875938758254
+    },
+    "structural_entropy": -1.417794330214159
+  }
+]

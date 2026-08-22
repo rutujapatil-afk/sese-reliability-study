@@ -1,0 +1,8 @@
+case_id,category,question,n_responses,clustering_threshold,status,error,n_nodes,n_edges,edge_density,mean_edge_weight,total_edge_weight,n_clusters,structural_entropy,cluster_sizes
+factual_001,factual,Who discovered penicillin?,6,0.3,success,,6,15,1.0,0.7019667166673268,10.529500750009902,1,-1.7469866333453756,[6]
+factual_002,factual,What is the capital of France?,6,0.3,success,,6,15,1.0,0.9979294816652934,14.9689422249794,1,-1.7917594137276254,[6]
+factual_003,factual,Which planet is known as the Red Planet?,6,0.3,success,,6,15,1.0,0.9917786757151286,14.876680135726929,1,-1.791741051256671,[6]
+factual_004,factual,What is the largest planet in our solar system?,6,0.3,success,,6,15,1.0,0.83949214220047,12.59238213300705,1,-1.7834972706401118,[6]
+factual_005,factual,What gas do humans need to breathe?,6,0.3,success,,6,15,1.0,0.8929840405782064,13.394760608673096,1,-1.7892801745454103,[6]
+reasoning_001,reasoning,"If all A are B and all B are C, must all A be C?",6,0.3,success,,6,8,0.5333333333333333,0.7656961102038622,6.1255688816308975,1,-1.7116171946355003,[6]
+reasoning_002,reasoning,"If a number is divisible by 4, must it be even?",6,0.3,success,,6,15,1.0,0.47262335000559685,7.089350250083953,1,-1.7106079542284034,[6]
