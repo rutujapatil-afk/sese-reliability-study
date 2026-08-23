@@ -70,6 +70,18 @@ def main():
         / "failure_mechanism_results.csv"
     )
 
+    # Phase 2 scaled evaluation. Support the current directory layout first,
+    # while also accepting a flat results/scaled_evaluation_results.csv file.
+    scaled_candidates = [
+        RESULTS / "scaled_evaluation" / "scaled_evaluation_results.csv",
+        RESULTS / "scaled_evaluation_results.csv",
+    ]
+    scaled = None
+    for candidate in scaled_candidates:
+        if candidate.exists():
+            scaled = load(candidate)
+            break
+
     rows = []
 
     # ------------------------------------------------------------
@@ -267,7 +279,126 @@ def main():
         )
 
     # ------------------------------------------------------------
-    # 5. Failure mechanisms
+    # 5. Scaled evaluation
+    # ------------------------------------------------------------
+
+    if scaled is not None:
+        # The scaled runner records one row per evaluated case.
+        # Prefer explicit success flags when available.
+        successful = scaled
+        if "status" in scaled.columns:
+            successful = scaled[
+                scaled["status"].astype(str).str.lower().isin(
+                    ["success", "successful", "ok", "completed"]
+                )
+            ]
+        elif "success" in scaled.columns:
+            successful = scaled[
+                scaled["success"].astype(str).str.lower().isin(
+                    ["true", "1", "yes"]
+                )
+            ]
+
+        rows.append(
+            {
+                "experiment": "scaled_evaluation",
+                "metric": "cases_evaluated",
+                "value": int(len(successful)),
+                "interpretation":
+                    "Number of scaled-evaluation cases represented in the "
+                    "results table.",
+            }
+        )
+
+        if "case_id" in scaled.columns:
+            rows.append(
+                {
+                    "experiment": "scaled_evaluation",
+                    "metric": "unique_cases",
+                    "value": int(successful["case_id"].nunique()),
+                    "interpretation":
+                        "Number of distinct evaluation cases in the scaled dataset.",
+                }
+            )
+
+        if "n_nodes" in successful.columns:
+            rows.append(
+                {
+                    "experiment": "scaled_evaluation",
+                    "metric": "total_responses",
+                    "value": int(successful["n_nodes"].sum()),
+                    "interpretation":
+                        "Total number of responses represented across evaluated cases.",
+                }
+            )
+
+        if "incorrect_fraction" in successful.columns:
+            rows.append(
+                {
+                    "experiment": "scaled_evaluation",
+                    "metric": "mean_incorrect_fraction",
+                    "value": float(successful["incorrect_fraction"].mean()),
+                    "interpretation":
+                        "Mean incorrect-response fraction across scaled-evaluation cases.",
+                }
+            )
+
+        if "confident_failure" in successful.columns:
+            confident = successful["confident_failure"].astype(str).str.lower()
+            rows.append(
+                {
+                    "experiment": "scaled_evaluation",
+                    "metric": "confident_failure_count",
+                    "value": int(
+                        confident.isin(["true", "1", "yes"]).sum()
+                    ),
+                    "interpretation":
+                        "Number of scaled-evaluation cases classified as confident failures.",
+                }
+            )
+
+        if "structural_entropy" in successful.columns:
+            entropy = pd.to_numeric(
+                successful["structural_entropy"], errors="coerce"
+            ).dropna()
+
+            if not entropy.empty:
+                rows.append(
+                    {
+                        "experiment": "scaled_evaluation",
+                        "metric": "entropy_mean",
+                        "value": float(entropy.mean()),
+                        "interpretation":
+                            "Mean structural entropy across scaled-evaluation cases.",
+                    }
+                )
+                rows.append(
+                    {
+                        "experiment": "scaled_evaluation",
+                        "metric": "entropy_range",
+                        "value": float(entropy.max() - entropy.min()),
+                        "interpretation":
+                            "Observed structural-entropy range across scaled-evaluation cases.",
+                    }
+                )
+
+        if "n_clusters" in successful.columns:
+            clusters = pd.to_numeric(
+                successful["n_clusters"], errors="coerce"
+            ).dropna()
+            if not clusters.empty:
+                rows.append(
+                    {
+                        "experiment": "scaled_evaluation",
+                        "metric": "cluster_count_range",
+                        "value": float(clusters.max() - clusters.min()),
+                        "interpretation":
+                            "Observed range in cluster counts across scaled-evaluation cases.",
+                    }
+                )
+
+    # ------------------------------------------------------------
+    # 6. Failure mechanisms
     # ------------------------------------------------------------
 
     if failure is not None:
@@ -343,7 +474,8 @@ def main():
             "- Semantic perturbation\n"
             "- Score stability\n"
             "- Semantic/reasoning complexity\n"
-            "- Failure mechanisms\n\n"
+            "- Failure mechanisms\n"
+            "- Phase 2 scaled evaluation\n\n"
         )
 
         f.write("## Quantitative Results\n\n")
@@ -421,8 +553,9 @@ def main():
                     f"changes in structural entropy, reaching an "
                     f"absolute relative change of approximately "
                     f"{max_noise:.4f} at the strongest tested condition. "
-                    "This indicates that uncertainty is sensitive to "
-                    "changes in semantic edge weights.\n\n"
+                    "This provides evidence that the measured structural entropy can "
+                    "respond to perturbations of semantic edge weights "
+                    "under the tested conditions.\n\n"
                 )
 
         f.write("## Claim 3 — Complexity dependence\n\n")
@@ -460,10 +593,64 @@ def main():
                     f"The failure-mechanism experiment identified "
                     f"{confident_count} confident-failure case(s) "
                     "within the tested examples. These cases provide "
-                    "evidence that structural properties of semantic "
-                    "graphs should be examined when uncertainty is "
-                    "incorrectly high.\n\n"
+                    "motivation for further examination of structural properties of "
+                    "semantic graphs in situations where uncertainty "
+                    "is incorrectly high.\n\n"
                 )
+
+        f.write("## Claim 5 — Scaled evaluation\n\n")
+
+        if scaled is not None:
+            successful = scaled
+            if "status" in scaled.columns:
+                successful = scaled[
+                    scaled["status"].astype(str).str.lower().isin(
+                        ["success", "successful", "ok", "completed"]
+                    )
+                ]
+            elif "success" in scaled.columns:
+                successful = scaled[
+                    scaled["success"].astype(str).str.lower().isin(
+                        ["true", "1", "yes"]
+                    )
+                ]
+
+            case_count = (
+                int(successful["case_id"].nunique())
+                if "case_id" in successful.columns
+                else int(len(successful))
+            )
+            response_count = (
+                int(successful["n_nodes"].sum())
+                if "n_nodes" in successful.columns
+                else None
+            )
+
+            if response_count is not None:
+                f.write(
+                    f"The Phase 2 scaled evaluation covered {case_count} "
+                    f"cases and {response_count} responses. The results "
+                    "provide a broader pilot-scale check of structural "
+                    "entropy behavior across factual and reasoning cases. "
+                    "Because the current run used the SeSE original-response "
+                    "fallback when enhancement requests were unavailable, "
+                    "this should be interpreted as a scaled evaluation of "
+                    "the fallback/original-response path rather than a "
+                    "fully enhancement-enabled evaluation.\n\n"
+                )
+            else:
+                f.write(
+                    f"The Phase 2 scaled evaluation covered {case_count} "
+                    "cases. It provides a broader pilot-scale check of "
+                    "structural entropy behavior, subject to the limitations "
+                    "of the current dataset and execution path.\n\n"
+                )
+        else:
+            f.write(
+                "The Phase 2 scaled evaluation was not available in the "
+                "current results directory and therefore is not included "
+                "in this synthesis.\n\n"
+            )
 
         f.write("## What We Cannot Yet Claim\n\n")
 

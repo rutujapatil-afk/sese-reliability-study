@@ -8,7 +8,7 @@ Across the tested clustering thresholds, structural entropy varied by approximat
 
 ## Claim 2 — Structural perturbation sensitivity
 
-Edge-weight perturbations produced measurable changes in structural entropy, reaching an absolute relative change of approximately 0.3209 at the strongest tested condition. This indicates that uncertainty is sensitive to changes in semantic edge weights.
+Edge-weight perturbations produced measurable changes in structural entropy, reaching an absolute relative change of approximately 0.3209 at the strongest tested condition. This provides evidence that the measured structural entropy can respond to perturbations of semantic edge weights under the tested conditions.
 
 ## Claim 3 — Complexity dependence
 
@@ -16,7 +16,11 @@ Structural entropy varied across the tested semantic/reasoning complexity condit
 
 ## Claim 4 — Failure mechanisms
 
-The failure-mechanism experiment identified 2 confident-failure case(s) within the tested examples. These cases provide evidence that structural properties of semantic graphs should be examined when uncertainty is incorrectly high.
+The failure-mechanism experiment identified 2 confident-failure case(s) within the tested examples. These cases provide motivation for further examination of structural properties of semantic graphs in situations where uncertainty is incorrectly high.
+
+## Claim 5 — Scaled evaluation
+
+The Phase 2 scaled evaluation covered 7 cases and 42 responses. The results provide a broader pilot-scale check of structural entropy behavior across factual and reasoning cases. Because the current run used the SeSE original-response fallback when enhancement requests were unavailable, this should be interpreted as a scaled evaluation of the fallback/original-response path rather than a fully enhancement-enabled evaluation.
 
 ## What We Cannot Yet Claim
 
