@@ -1,1194 +1,1135 @@
 """
-SeSE Phase 2 — Scaled Evaluation
+Phase 2: Scaled evaluation harness for the SeSE robustness study.
 
-Runs the ORIGINAL, UNMODIFIED SeSE semantic graph construction
-over the scaled evaluation cases.
+This version is compatible with the ORIGINAL SeSE implementation under:
 
-Important:
-- The original SeSE function is:
-      build_semantic_graph(responses, question, batch_size=128)
-- It does NOT accept a threshold argument.
-- This script therefore does not pass threshold=... to the original
-  graph constructor.
-- The question is ALWAYS passed explicitly.
-- The original SeSE implementation is imported without modification.
-- Failures are isolated per case.
-- Results are saved even if one case fails.
+    E:/SeSe/original_work/SeSE
 
-Output:
-    our_study/results/scaled_evaluation/
-        scaled_evaluation_results.csv
-        scaled_evaluation_summary.csv
-        scaled_evaluation_report.md
+The original build_semantic_graph() API is:
+
+    build_semantic_graph(responses, question, batch_size=128)
+
+and returns a weighted adjacency matrix.
+
+This experiment does NOT modify the original SeSE implementation.
 """
 
 from __future__ import annotations
 
+import csv
 import inspect
-import json
-import math
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
-import pandas as pd
 
 
-# ======================================================================
-# PATHS
-# ======================================================================
+# ---------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------
 
 ROOT = Path(__file__).resolve().parents[1]
-PROJECT_ROOT = ROOT.parent
 
-ORIGINAL_SESE = PROJECT_ROOT / "original_work" / "SeSE"
+ORIGINAL = ROOT.parent / "original_work" / "SeSE"
 
-RESULTS_DIR = ROOT / "results" / "scaled_evaluation"
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS = ROOT / "results" / "scaled_evaluation"
+RESULTS.mkdir(parents=True, exist_ok=True)
 
-
-# ======================================================================
-# EXPERIMENT CONFIGURATION
-# ======================================================================
-
-BATCH_SIZE = 128
-
-# Kept as metadata only.
-#
-# IMPORTANT:
-# The original build_semantic_graph() does not accept threshold.
-# We therefore DO NOT pass this value to it.
-CLUSTERING_THRESHOLD = 0.30
+OUTPUT = RESULTS / "scaled_evaluation_results.csv"
 
 
-# ======================================================================
-# SCALED DATASET
-# ======================================================================
-#
-# These are the same seven evaluation cases used by the Phase 2 run.
-#
-# If your project already contains a response dataset, the loader below
-# will try to use it first. Otherwise these embedded responses provide a
-# deterministic fallback so the experiment can actually run.
-#
-# Replace these fallback responses with the exact experimental responses
-# if your project stores them elsewhere.
-# ======================================================================
+# ---------------------------------------------------------------------
+# Make original SeSE importable
+# ---------------------------------------------------------------------
 
-CASES: List[Dict[str, Any]] = [
+if str(ORIGINAL) not in sys.path:
+    sys.path.insert(0, str(ORIGINAL))
+
+
+# ---------------------------------------------------------------------
+# Evaluation cases
+# ---------------------------------------------------------------------
+
+CASES = [
     {
         "case_id": "factual_001",
         "question": "Who discovered penicillin?",
-        "category": "factual",
         "responses": [
-            "Alexander Fleming discovered penicillin in 1928.",
+            "Alexander Fleming discovered penicillin.",
             "Penicillin was discovered by Alexander Fleming.",
             "Alexander Fleming is credited with discovering penicillin.",
-            "Fleming discovered penicillin in 1928.",
-            "Penicillin was first discovered by Alexander Fleming.",
-            "The discovery of penicillin is generally credited to Alexander Fleming.",
+            "Marie Curie discovered penicillin.",
+            "Louis Pasteur discovered penicillin.",
+            "Alexander Fleming discovered the antibiotic penicillin.",
+        ],
+        "correctness": [1, 1, 1, 0, 0, 1],
+        "error_type": [
+            "correct",
+            "correct",
+            "correct",
+            "factual",
+            "factual",
+            "correct",
         ],
     },
     {
         "case_id": "factual_002",
         "question": "What is the capital of France?",
-        "category": "factual",
         "responses": [
             "The capital of France is Paris.",
             "Paris is the capital city of France.",
             "France has Paris as its capital.",
-            "The capital of France is Paris.",
+            "The capital of France is Lyon.",
+            "Marseille is the capital of France.",
             "Paris serves as the capital of France.",
-            "Paris is France's capital.",
+        ],
+        "correctness": [1, 1, 1, 0, 0, 1],
+        "error_type": [
+            "correct",
+            "correct",
+            "correct",
+            "factual",
+            "factual",
+            "correct",
         ],
     },
     {
         "case_id": "factual_003",
         "question": "Which planet is known as the Red Planet?",
-        "category": "factual",
         "responses": [
             "Mars is known as the Red Planet.",
             "The Red Planet is Mars.",
-            "Mars is the planet commonly called the Red Planet.",
-            "The planet known as the Red Planet is Mars.",
-            "Mars has the nickname the Red Planet.",
-            "The Red Planet refers to Mars.",
+            "Mars is commonly called the Red Planet.",
+            "Venus is known as the Red Planet.",
+            "Jupiter is the Red Planet.",
+            "Mars is referred to as the Red Planet.",
+        ],
+        "correctness": [1, 1, 1, 0, 0, 1],
+        "error_type": [
+            "correct",
+            "correct",
+            "correct",
+            "factual",
+            "factual",
+            "correct",
         ],
     },
     {
         "case_id": "factual_004",
         "question": "What is the largest planet in our solar system?",
-        "category": "factual",
         "responses": [
-            "Jupiter is the largest planet in our solar system.",
+            "Jupiter is the largest planet in the solar system.",
             "The largest planet is Jupiter.",
-            "Jupiter has the greatest size of all the planets in our solar system.",
-            "Our solar system's largest planet is Jupiter.",
-            "Jupiter is the biggest planet in the solar system.",
-            "The answer is Jupiter.",
+            "Jupiter has the greatest planetary size in our solar system.",
+            "Saturn is the largest planet.",
+            "Earth is the largest planet.",
+            "Jupiter is the largest planet in our solar system.",
+        ],
+        "correctness": [1, 1, 1, 0, 0, 1],
+        "error_type": [
+            "correct",
+            "correct",
+            "correct",
+            "factual",
+            "factual",
+            "correct",
         ],
     },
     {
         "case_id": "factual_005",
         "question": "What gas do humans need to breathe?",
-        "category": "factual",
         "responses": [
             "Humans need oxygen to breathe.",
-            "People require oxygen for respiration.",
-            "The gas humans need to breathe is oxygen.",
-            "Humans breathe oxygen.",
-            "Oxygen is required for normal human respiration.",
-            "The primary gas humans use for breathing is oxygen.",
+            "Oxygen is required for human respiration.",
+            "People breathe oxygen.",
+            "Humans need carbon dioxide to breathe.",
+            "Nitrogen is the gas humans primarily need for respiration.",
+            "Oxygen is necessary for human breathing.",
+        ],
+        "correctness": [1, 1, 1, 0, 0, 1],
+        "error_type": [
+            "correct",
+            "correct",
+            "correct",
+            "factual",
+            "factual",
+            "correct",
         ],
     },
     {
         "case_id": "reasoning_001",
         "question": "If all A are B and all B are C, must all A be C?",
-        "category": "reasoning",
         "responses": [
-            "Yes. If every A is B and every B is C, then every A must also be C.",
-            "Yes, this follows by transitivity: A is a subset of B and B is a subset of C.",
-            "All A are B, and all B are C, so all A are necessarily C.",
-            "Yes. The conclusion follows logically from the two premises.",
-            "If A implies B and B implies C, then A implies C.",
-            "Yes, every member of A belongs to B, and every member of B belongs to C.",
+            "Yes. If every A is a B and every B is a C, then every A is a C.",
+            "Yes, because membership in A implies membership in B and then C.",
+            "All A are necessarily C under those premises.",
+            "No, A can be unrelated to C.",
+            "The conclusion cannot follow because B and C are different labels.",
+            "Yes, the implication follows transitively.",
+        ],
+        "correctness": [1, 1, 1, 0, 0, 1],
+        "error_type": [
+            "correct",
+            "correct",
+            "correct",
+            "reasoning",
+            "reasoning",
+            "correct",
         ],
     },
     {
         "case_id": "reasoning_002",
         "question": "If a number is divisible by 4, must it be even?",
-        "category": "reasoning",
         "responses": [
-            "Yes. Every number divisible by 4 is also divisible by 2, so it must be even.",
-            "Yes, divisibility by 4 implies divisibility by 2.",
-            "Any integer divisible by 4 is necessarily even.",
-            "Yes. If n = 4k, then n = 2(2k), so n is even.",
-            "A number divisible by 4 must be even.",
-            "Yes, because every multiple of 4 is also a multiple of 2.",
+            "Yes. Every number divisible by 4 is even.",
+            "Yes, because divisibility by 4 implies divisibility by 2.",
+            "A number divisible by four must be even.",
+            "No. Numbers divisible by 4 can be odd.",
+            "Divisibility by 4 does not imply evenness.",
+            "Yes, divisibility by 4 guarantees an even number.",
+        ],
+        "correctness": [1, 1, 1, 0, 0, 1],
+        "error_type": [
+            "correct",
+            "correct",
+            "correct",
+            "reasoning",
+            "reasoning",
+            "correct",
         ],
     },
 ]
 
 
-# ======================================================================
-# OPTIONAL EXTERNAL DATA LOADER
-# ======================================================================
+# ---------------------------------------------------------------------
+# Original SeSE loading
+# ---------------------------------------------------------------------
 
-def _normalise_response_list(value: Any) -> Optional[List[str]]:
-    """Convert common response representations into List[str]."""
-
-    if value is None:
-        return None
-
-    if isinstance(value, list):
-        values = value
-    elif isinstance(value, tuple):
-        values = list(value)
-    elif isinstance(value, str):
-        # Try JSON first.
-        try:
-            parsed = json.loads(value)
-            if isinstance(parsed, list):
-                values = parsed
-            else:
-                values = [value]
-        except Exception:
-            values = [value]
-    else:
-        return None
-
-    output = []
-
-    for item in values:
-        if isinstance(item, dict):
-            for key in ("response", "text", "answer", "content"):
-                if key in item:
-                    output.append(str(item[key]))
-                    break
-        else:
-            output.append(str(item))
-
-    output = [x.strip() for x in output if str(x).strip()]
-
-    return output if output else None
-
-
-def try_load_external_cases() -> Optional[List[Dict[str, Any]]]:
+def load_seme_graph_module():
     """
-    Look for an existing Phase 2 dataset.
-
-    Supported formats:
-      - JSON
-      - CSV
-
-    This is deliberately optional. If nothing is found, the embedded
-    dataset above is used.
+    Import the ORIGINAL SeSE semantic graph module.
     """
-
-    candidates = [
-        ROOT / "data" / "scaled_evaluation.json",
-        ROOT / "data" / "scaled_evaluation.csv",
-        ROOT / "datasets" / "scaled_evaluation.json",
-        ROOT / "datasets" / "scaled_evaluation.csv",
-        ROOT / "scaled_evaluation.json",
-        ROOT / "scaled_evaluation.csv",
-    ]
-
-    for path in candidates:
-        if not path.exists():
-            continue
-
-        try:
-            if path.suffix.lower() == ".json":
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-
-                if isinstance(data, dict):
-                    data = data.get("cases", data.get("data", []))
-
-                if not isinstance(data, list):
-                    continue
-
-                cases = []
-
-                for item in data:
-                    if not isinstance(item, dict):
-                        continue
-
-                    case_id = (
-                        item.get("case_id")
-                        or item.get("id")
-                        or item.get("case")
-                    )
-
-                    question = item.get("question")
-
-                    responses = _normalise_response_list(
-                        item.get("responses")
-                        or item.get("answers")
-                        or item.get("outputs")
-                    )
-
-                    if case_id and question and responses:
-                        cases.append(
-                            {
-                                "case_id": str(case_id),
-                                "question": str(question),
-                                "category": str(
-                                    item.get("category", "unknown")
-                                ),
-                                "responses": responses,
-                            }
-                        )
-
-                if cases:
-                    print(f"[OK] Loaded external dataset: {path}")
-                    return cases
-
-            elif path.suffix.lower() == ".csv":
-                df = pd.read_csv(path)
-
-                required = {"case_id", "question"}
-
-                if not required.issubset(df.columns):
-                    continue
-
-                cases = []
-
-                for case_id, group in df.groupby("case_id"):
-                    question = str(group.iloc[0]["question"])
-
-                    if "response" in group.columns:
-                        responses = [
-                            str(x)
-                            for x in group["response"].tolist()
-                            if str(x).strip()
-                        ]
-                    elif "text" in group.columns:
-                        responses = [
-                            str(x)
-                            for x in group["text"].tolist()
-                            if str(x).strip()
-                        ]
-                    elif "answer" in group.columns:
-                        responses = [
-                            str(x)
-                            for x in group["answer"].tolist()
-                            if str(x).strip()
-                        ]
-                    else:
-                        continue
-
-                    if responses:
-                        cases.append(
-                            {
-                                "case_id": str(case_id),
-                                "question": question,
-                                "category": str(
-                                    group.iloc[0].get(
-                                        "category", "unknown"
-                                    )
-                                ),
-                                "responses": responses,
-                            }
-                        )
-
-                if cases:
-                    print(f"[OK] Loaded external dataset: {path}")
-                    return cases
-
-        except Exception as exc:
-            print(f"[WARN] Could not load {path}: {exc}")
-
-    return None
-
-
-# ======================================================================
-# ORIGINAL SESE IMPORT
-# ======================================================================
-
-def load_original_seme_graph_function():
-    """
-    Import the ORIGINAL SeSE build_semantic_graph function.
-
-    We do not edit original_work/SeSE.
-    """
-
-    if not ORIGINAL_SESE.exists():
-        raise RuntimeError(
-            "Original SeSE directory was not found:\n"
-            f"  {ORIGINAL_SESE}"
-        )
-
-    original_path = str(ORIGINAL_SESE)
-
-    if original_path not in sys.path:
-        sys.path.insert(0, original_path)
 
     try:
-        from sentence_structural_entropy.src.uncertainty_measures.construct_semantic_graph import (
-            build_semantic_graph,
-        )
+        import sentence_structural_entropy.src.uncertainty_measures.construct_semantic_graph as module
+
     except Exception as exc:
         raise RuntimeError(
-            "Could not import the original SeSE "
-            "build_semantic_graph function.\n\n"
-            f"Expected location:\n{ORIGINAL_SESE}\n\n"
-            f"Original error:\n{exc}"
+            "Could not import the original SeSE module from "
+            f"{ORIGINAL}. Check original_work/SeSE."
         ) from exc
 
-    if not callable(build_semantic_graph):
+    if not hasattr(module, "build_semantic_graph"):
         raise RuntimeError(
-            "Imported build_semantic_graph is not callable."
+            "The original construct_semantic_graph module does not "
+            "expose build_semantic_graph."
         )
 
-    signature = inspect.signature(build_semantic_graph)
+    return module
+
+
+def load_seme_graph_functions():
+
+    module = load_seme_graph_module()
+
+    build_semantic_graph = module.build_semantic_graph
 
     print("Original SeSE graph construction loaded.")
-    print(f"build_semantic_graph signature: {signature}")
 
-    parameters = list(signature.parameters.keys())
-
-    required = {"responses", "question"}
-
-    if not required.issubset(parameters):
-        raise RuntimeError(
-            "Unexpected original SeSE API.\n"
-            f"Expected parameters containing {required}, "
-            f"found: {parameters}"
+    try:
+        print(
+            "build_semantic_graph signature:",
+            inspect.signature(build_semantic_graph),
         )
+    except (TypeError, ValueError):
+        pass
 
-    return build_semantic_graph
+    return module, build_semantic_graph
 
 
-# ======================================================================
-# SAFE ORIGINAL SESE CALL
-# ======================================================================
+# ---------------------------------------------------------------------
+# Graph normalization
+# ---------------------------------------------------------------------
 
-def call_original_graph(
-    build_semantic_graph,
-    responses: List[str],
-    question_text: str,
-) -> Any:
+def to_numpy_matrix(graph: Any) -> np.ndarray:
     """
-    Call the original function using its actual signature.
-
-    The key fix:
-        build_semantic_graph(responses=responses, question=question_text)
-
-    There is intentionally NO threshold argument.
-    """
-
-    if not isinstance(question_text, str) or not question_text.strip():
-        raise ValueError("Question must be a non-empty string.")
-
-    if not responses:
-        raise ValueError("Responses cannot be empty.")
-
-    signature = inspect.signature(build_semantic_graph)
-    parameters = signature.parameters
-
-    kwargs = {}
-
-    # The original function definitely has these two parameters.
-    kwargs["responses"] = responses
-    kwargs["question"] = question_text
-
-    # Only provide batch_size if the original function supports it.
-    if "batch_size" in parameters:
-        kwargs["batch_size"] = BATCH_SIZE
-
-    # NEVER add threshold here.
-    return build_semantic_graph(**kwargs)
-
-
-# ======================================================================
-# GRAPH NORMALISATION
-# ======================================================================
-
-def graph_to_numpy(graph: Any) -> np.ndarray:
-    """
-    Convert the original SeSE graph representation into a square
-    floating-point adjacency matrix.
+    Convert the original SeSE result into a square numeric matrix.
     """
 
     if graph is None:
-        raise ValueError("SeSE returned None.")
+        raise ValueError(
+            "Original SeSE graph construction returned None."
+        )
 
-    # scipy sparse matrix
     if hasattr(graph, "toarray"):
         graph = graph.toarray()
 
-    # numpy array
-    arr = np.asarray(graph, dtype=float)
+    matrix = np.asarray(graph, dtype=float)
 
-    if arr.ndim == 1:
-        # A flat vector can only represent a square matrix if its
-        # length is a perfect square.
-        n = int(round(math.sqrt(len(arr))))
-
-        if n * n != len(arr):
-            raise ValueError(
-                "SeSE returned a one-dimensional object that cannot "
-                "be interpreted as a square graph."
-            )
-
-        arr = arr.reshape((n, n))
-
-    if arr.ndim != 2:
+    if matrix.ndim != 2:
         raise ValueError(
-            f"Unexpected SeSE graph dimensionality: {arr.ndim}"
+            "Expected a 2-D SeSE adjacency matrix, "
+            f"got shape {matrix.shape}."
         )
 
-    rows, cols = arr.shape
-
-    # Some implementations return a list of rows.
-    if rows != cols:
+    if matrix.shape[0] != matrix.shape[1]:
         raise ValueError(
-            f"SeSE graph is not square: {arr.shape}"
+            "Expected a square SeSE adjacency matrix, "
+            f"got shape {matrix.shape}."
         )
 
-    # Clean numerical issues.
-    arr = np.nan_to_num(
-        arr,
+    if not np.all(np.isfinite(matrix)):
+        raise ValueError(
+            "SeSE graph contains NaN or infinite values."
+        )
+
+    return matrix
+
+
+def symmetrize(weights: np.ndarray) -> np.ndarray:
+    """
+    Normalize the weighted graph for downstream analysis.
+    """
+
+    matrix = np.asarray(weights, dtype=float)
+
+    matrix = np.nan_to_num(
+        matrix,
         nan=0.0,
         posinf=0.0,
         neginf=0.0,
     )
 
-    # Remove tiny negative numerical artifacts.
-    arr[arr < 0] = 0.0
+    matrix = np.maximum(matrix, 0.0)
 
-    # A semantic graph should not need self-loop weight for these
-    # summary statistics.
-    np.fill_diagonal(arr, 0.0)
+    matrix = (matrix + matrix.T) / 2.0
 
-    return arr
+    np.fill_diagonal(matrix, 0.0)
 
-
-# ======================================================================
-# GRAPH METRICS
-# ======================================================================
-
-def compute_basic_graph_metrics(
-    adjacency: np.ndarray,
-) -> Dict[str, float]:
-    """Compute basic weighted graph statistics."""
-
-    n = int(adjacency.shape[0])
-
-    if n <= 1:
-        return {
-            "n_nodes": n,
-            "n_edges": 0,
-            "edge_density": 0.0,
-            "mean_edge_weight": 0.0,
-            "total_edge_weight": 0.0,
-        }
-
-    # The original graph is treated as undirected for summary
-    # statistics. If the matrix is asymmetric, symmetrise it.
-    weights = (adjacency + adjacency.T) / 2.0
-
-    np.fill_diagonal(weights, 0.0)
-
-    upper = weights[np.triu_indices(n, k=1)]
-
-    positive = upper[upper > 0]
-
-    n_edges = int(len(positive))
-    possible_edges = n * (n - 1) // 2
-
-    density = (
-        float(n_edges / possible_edges)
-        if possible_edges
-        else 0.0
-    )
-
-    total_weight = float(positive.sum())
-
-    mean_weight = (
-        float(positive.mean())
-        if n_edges
-        else 0.0
-    )
-
-    return {
-        "n_nodes": n,
-        "n_edges": n_edges,
-        "edge_density": density,
-        "mean_edge_weight": mean_weight,
-        "total_edge_weight": total_weight,
-    }
+    return matrix
 
 
-def connected_components(adjacency: np.ndarray) -> List[List[int]]:
+# ---------------------------------------------------------------------
+# Clustering
+# ---------------------------------------------------------------------
+
+def compute_clusters(
+    weights: np.ndarray,
+    threshold: float = 0.30,
+) -> np.ndarray:
     """
-    Find connected components using positive-weight edges.
+    Compute connected components after thresholding the ORIGINAL
+    SeSE weighted graph.
 
-    This avoids depending on an additional graph package.
+    IMPORTANT:
+
+        threshold is applied here.
+
+    It is NOT passed to build_semantic_graph(), because the original
+    SeSE function does not accept a threshold argument.
     """
 
-    n = adjacency.shape[0]
+    matrix = symmetrize(weights)
+
+    n = matrix.shape[0]
 
     if n == 0:
-        return []
+        return np.array([], dtype=int)
 
-    weights = (adjacency + adjacency.T) / 2.0
-    connected = weights > 0
+    adjacency = matrix >= float(threshold)
 
-    visited = set()
-    components = []
+    np.fill_diagonal(adjacency, False)
+
+    labels = -np.ones(n, dtype=int)
+
+    component = 0
 
     for start in range(n):
-        if start in visited:
+
+        if labels[start] != -1:
             continue
 
         stack = [start]
-        component = []
+
+        labels[start] = component
 
         while stack:
+
             node = stack.pop()
 
-            if node in visited:
-                continue
-
-            visited.add(node)
-            component.append(node)
-
-            neighbours = np.where(connected[node])[0]
+            neighbours = np.flatnonzero(
+                adjacency[node]
+            )
 
             for neighbour in neighbours:
+
                 neighbour = int(neighbour)
 
-                if neighbour not in visited:
+                if labels[neighbour] == -1:
+
+                    labels[neighbour] = component
+
                     stack.append(neighbour)
 
-        components.append(sorted(component))
+        component += 1
 
-    return components
+    return labels
 
 
-def compute_structural_entropy(adjacency: np.ndarray) -> float:
+# ---------------------------------------------------------------------
+# Structural entropy
+# ---------------------------------------------------------------------
+
+def graph_entropy_fallback(
+    weights: np.ndarray,
+) -> float:
     """
-    Compute a weighted structural entropy.
+    Deterministic fallback structural entropy.
 
-    We use the weighted degree distribution:
+    The original construct_semantic_graph module returns the graph matrix,
+    not an entropy scalar. When no dedicated entropy helper is exported by
+    that module, calculate the negative Shannon entropy of the weighted
+    degree distribution.
 
-        p_i = degree_i / sum(degrees)
-
-        H = sum_i p_i log(p_i)
-
-    This preserves the negative-valued convention used by the
-    existing SeSE experimental outputs.
+    This keeps the experiment executable without inventing an API for the
+    original implementation.
     """
 
-    n = adjacency.shape[0]
+    matrix = symmetrize(weights)
 
-    if n == 0:
+    degree = matrix.sum(axis=1)
+
+    total = float(degree.sum())
+
+    if total <= 0.0:
         return 0.0
 
-    weights = (adjacency + adjacency.T) / 2.0
-    np.fill_diagonal(weights, 0.0)
+    probabilities = degree / total
 
-    degrees = weights.sum(axis=1)
+    probabilities = probabilities[
+        probabilities > 0.0
+    ]
 
-    total = float(degrees.sum())
-
-    if total <= 0:
-        return 0.0
-
-    probabilities = degrees / total
-
-    probabilities = probabilities[probabilities > 0]
-
-    return float(np.sum(probabilities * np.log(probabilities)))
-
-
-def compute_graph_metrics(
-    graph: Any,
-) -> Dict[str, Any]:
-    """Convert graph and calculate all Phase 2 metrics."""
-
-    adjacency = graph_to_numpy(graph)
-
-    basic = compute_basic_graph_metrics(adjacency)
-
-    components = connected_components(adjacency)
-
-    component_sizes = sorted(
-        [len(component) for component in components],
-        reverse=True,
+    return float(
+        np.sum(
+            probabilities
+            * np.log(probabilities)
+        )
     )
 
-    n_clusters = len(component_sizes)
 
-    structural_entropy = compute_structural_entropy(adjacency)
+def try_original_entropy(
+    module,
+    weights: np.ndarray,
+    labels: np.ndarray,
+):
+    """
+    If the original module happens to expose a structural entropy helper,
+    use it. Otherwise return None.
+    """
 
-    metrics = {
-        **basic,
-        "n_clusters": int(n_clusters),
-        "structural_entropy": structural_entropy,
-        "cluster_sizes": json.dumps(component_sizes),
+    candidates = [
+        "structural_entropy",
+        "compute_structural_entropy",
+        "calculate_structural_entropy",
+        "get_structural_entropy",
+    ]
+
+    for name in candidates:
+
+        function = getattr(
+            module,
+            name,
+            None,
+        )
+
+        if not callable(function):
+            continue
+
+        try:
+            signature = inspect.signature(
+                function
+            )
+        except (TypeError, ValueError):
+            continue
+
+        kwargs = {}
+
+        compatible = True
+
+        for parameter in signature.parameters.values():
+
+            if parameter.kind in (
+                inspect.Parameter.VAR_POSITIONAL,
+                inspect.Parameter.VAR_KEYWORD,
+            ):
+                continue
+
+            if parameter.name in {
+                "graph",
+                "adjacency",
+                "matrix",
+                "weights",
+            }:
+                kwargs[parameter.name] = weights
+
+            elif parameter.name in {
+                "cluster_ids",
+                "labels",
+                "clusters",
+                "cluster_labels",
+            }:
+                kwargs[parameter.name] = labels
+
+            elif parameter.default is parameter.empty:
+
+                compatible = False
+
+                break
+
+        if not compatible:
+            continue
+
+        try:
+
+            value = function(**kwargs)
+
+            if (
+                np.isscalar(value)
+                and np.isfinite(float(value))
+            ):
+                return float(value)
+
+        except Exception:
+            continue
+
+    return None
+
+
+def compute_structural_entropy(
+    module,
+    weights: np.ndarray,
+    labels: np.ndarray,
+) -> float:
+
+    original_value = try_original_entropy(
+        module,
+        weights,
+        labels,
+    )
+
+    if original_value is not None:
+        return original_value
+
+    return graph_entropy_fallback(
+        weights
+    )
+
+
+# ---------------------------------------------------------------------
+# Graph statistics
+# ---------------------------------------------------------------------
+
+def graph_statistics(
+    weights: np.ndarray,
+    labels: np.ndarray,
+) -> dict:
+
+    matrix = symmetrize(weights)
+
+    n = matrix.shape[0]
+
+    upper = matrix[
+        np.triu_indices(
+            n,
+            k=1,
+        )
+    ]
+
+    positive_edges = upper > 0
+
+    n_edges = int(
+        np.count_nonzero(
+            positive_edges
+        )
+    )
+
+    if n_edges:
+
+        total_edge_weight = float(
+            upper[positive_edges].sum()
+        )
+
+        mean_edge_weight = float(
+            upper[positive_edges].mean()
+        )
+
+    else:
+
+        total_edge_weight = 0.0
+
+        mean_edge_weight = 0.0
+
+    possible_edges = (
+        n * (n - 1) / 2.0
+    )
+
+    if possible_edges:
+
+        edge_density = float(
+            n_edges / possible_edges
+        )
+
+    else:
+
+        edge_density = 0.0
+
+    _, cluster_sizes = np.unique(
+        labels,
+        return_counts=True,
+    )
+
+    n_clusters = int(
+        len(cluster_sizes)
+    )
+
+    if len(cluster_sizes):
+
+        largest_cluster = int(
+            cluster_sizes.max()
+        )
+
+        smallest_cluster = int(
+            cluster_sizes.min()
+        )
+
+        cluster_imbalance = float(
+            largest_cluster
+            / smallest_cluster
+        )
+
+    else:
+
+        largest_cluster = 0
+
+        smallest_cluster = 0
+
+        cluster_imbalance = 0.0
+
+    return {
+        "n_nodes": int(n),
+        "n_clusters": n_clusters,
+        "n_edges": n_edges,
+        "edge_density": edge_density,
+        "mean_edge_weight": mean_edge_weight,
+        "total_edge_weight": total_edge_weight,
+        "cluster_imbalance": cluster_imbalance,
+        "largest_cluster": largest_cluster,
+        "smallest_cluster": smallest_cluster,
     }
 
-    return metrics
 
+# ---------------------------------------------------------------------
+# ORIGINAL graph invocation
+# ---------------------------------------------------------------------
 
-# ======================================================================
-# CASE EVALUATION
-# ======================================================================
-
-def evaluate_case(
+def build_original_graph(
     build_semantic_graph,
-    case: Dict[str, Any],
-) -> Dict[str, Any]:
-    """Run one case and return a complete result row."""
+    responses,
+    question,
+):
+    """
+    Correct invocation of the ORIGINAL SeSE API.
 
-    case_id = str(case["case_id"])
-    question_text = str(case["question"])
-    responses = list(case["responses"])
+    Known original signature:
 
-    print("\n" + "-" * 70)
-    print(f"Case: {case_id}")
-    print(f"Question: {question_text}")
-    print(f"Responses: {len(responses)}")
+        build_semantic_graph(
+            responses,
+            question,
+            batch_size=128,
+        )
 
-    result: Dict[str, Any] = {
-        "case_id": case_id,
-        "category": case.get("category", "unknown"),
-        "question": question_text,
-        "n_responses": len(responses),
-        "clustering_threshold": CLUSTERING_THRESHOLD,
-        "status": "failed",
-        "error": "",
-    }
+    NEVER pass threshold here.
+    """
 
     try:
-        # ==============================================================
-        # CRITICAL:
-        #
-        # Pass BOTH responses and question.
-        # Do NOT pass threshold.
-        # ==============================================================
-        graph = call_original_graph(
-            build_semantic_graph=build_semantic_graph,
-            responses=responses,
-            question_text=question_text,
+
+        signature = inspect.signature(
+            build_semantic_graph
         )
 
-        metrics = compute_graph_metrics(graph)
+    except (TypeError, ValueError):
 
-        result.update(metrics)
-        result["status"] = "success"
+        signature = None
 
-        print(
-            f"    nodes: {metrics['n_nodes']}"
-        )
-        print(
-            f"    clusters/components: {metrics['n_clusters']}"
-        )
-        print(
-            f"    edges: {metrics['n_edges']}"
-        )
-        print(
-            f"    density: {metrics['edge_density']:.4f}"
-        )
-        print(
-            f"    mean edge weight: "
-            f"{metrics['mean_edge_weight']:.6f}"
-        )
-        print(
-            f"    total edge weight: "
-            f"{metrics['total_edge_weight']:.6f}"
-        )
-        print(
-            f"    structural entropy: "
-            f"{metrics['structural_entropy']:.8f}"
+    if signature is not None:
+
+        parameter_names = list(
+            signature.parameters
         )
 
-    except Exception as exc:
-        result["status"] = "failed"
-        result["error"] = (
-            f"{type(exc).__name__}: {exc}"
-        )
+        if (
+            len(parameter_names) >= 2
+            and parameter_names[0] == "responses"
+            and parameter_names[1] == "question"
+        ):
 
-        print(
-            "[ERROR] SeSE graph construction/evaluation failed: "
-            f"{type(exc).__name__}: {exc}"
-        )
+            kwargs = {}
 
-    return result
+            if (
+                "batch_size"
+                in signature.parameters
+            ):
 
+                kwargs["batch_size"] = 128
 
-# ======================================================================
-# SUMMARY
-# ======================================================================
-
-def make_summary(df: pd.DataFrame) -> pd.DataFrame:
-    """Create Phase 2 aggregate summary."""
-
-    if df.empty:
-        return pd.DataFrame(
-            [
-                {
-                    "metric": "successful_cases",
-                    "value": 0,
-                }
-            ]
-        )
-
-    successful = df[
-        df["status"].astype(str).str.lower() == "success"
-    ].copy()
-
-    summary_rows = []
-
-    summary_rows.append(
-        {
-            "metric": "total_cases",
-            "value": len(df),
-        }
-    )
-
-    summary_rows.append(
-        {
-            "metric": "successful_cases",
-            "value": len(successful),
-        }
-    )
-
-    summary_rows.append(
-        {
-            "metric": "failed_cases",
-            "value": len(df) - len(successful),
-        }
-    )
-
-    if not successful.empty:
-
-        for column in [
-            "structural_entropy",
-            "n_clusters",
-            "n_edges",
-            "edge_density",
-            "mean_edge_weight",
-            "total_edge_weight",
-        ]:
-            if column not in successful.columns:
-                continue
-
-            values = pd.to_numeric(
-                successful[column],
-                errors="coerce",
-            ).dropna()
-
-            if values.empty:
-                continue
-
-            summary_rows.append(
-                {
-                    "metric": f"mean_{column}",
-                    "value": float(values.mean()),
-                }
+            return build_semantic_graph(
+                responses,
+                question,
+                **kwargs,
             )
 
-            summary_rows.append(
-                {
-                    "metric": f"std_{column}",
-                    "value": float(values.std()),
-                }
-            )
+    # Defensive fallback.
 
-            summary_rows.append(
-                {
-                    "metric": f"min_{column}",
-                    "value": float(values.min()),
-                }
-            )
+    errors = []
 
-            summary_rows.append(
-                {
-                    "metric": f"max_{column}",
-                    "value": float(values.max()),
-                }
-            )
-
-    return pd.DataFrame(summary_rows)
-
-
-# ======================================================================
-# REPORT
-# ======================================================================
-
-def write_report(
-    df: pd.DataFrame,
-    summary: pd.DataFrame,
-) -> Path:
-    """Write a human-readable Phase 2 report."""
-
-    path = RESULTS_DIR / "scaled_evaluation_report.md"
-
-    successful = df[
-        df["status"].astype(str).str.lower() == "success"
+    attempts = [
+        (
+            responses,
+            question,
+            128,
+        ),
+        (
+            responses,
+            question,
+        ),
     ]
 
-    failed = df[
-        df["status"].astype(str).str.lower() != "success"
-    ]
+    for args in attempts:
 
-    with open(path, "w", encoding="utf-8") as f:
+        try:
 
-        f.write("# SeSE Phase 2 — Scaled Evaluation\n\n")
-
-        f.write(
-            "This report summarizes the scaled evaluation using the "
-            "original, unmodified SeSE semantic graph-construction "
-            "function.\n\n"
-        )
-
-        f.write("## Configuration\n\n")
-        f.write(
-            f"- Cases attempted: {len(df)}\n"
-        )
-        f.write(
-            f"- Successful cases: {len(successful)}\n"
-        )
-        f.write(
-            f"- Failed cases: {len(failed)}\n"
-        )
-        f.write(
-            f"- Responses per case: nominally 6\n"
-        )
-        f.write(
-            f"- Recorded clustering threshold: "
-            f"{CLUSTERING_THRESHOLD:.2f}\n"
-        )
-        f.write(
-            "- Original SeSE implementation: UNMODIFIED\n"
-        )
-        f.write(
-            "- Graph API: build_semantic_graph(responses, question, "
-            "batch_size=128)\n\n"
-        )
-
-        f.write("## Important implementation note\n\n")
-
-        f.write(
-            "The original SeSE graph constructor does not expose "
-            "`threshold` as a function argument. The scaled evaluation "
-            "therefore passes the question explicitly and does not "
-            "inject a threshold argument into the original function.\n\n"
-        )
-
-        f.write("## Successful cases\n\n")
-
-        if successful.empty:
-            f.write("No successful cases were generated.\n\n")
-        else:
-            columns = [
-                "case_id",
-                "category",
-                "n_responses",
-                "n_nodes",
-                "n_clusters",
-                "n_edges",
-                "edge_density",
-                "mean_edge_weight",
-                "total_edge_weight",
-                "structural_entropy",
-            ]
-
-            available = [
-                c for c in columns if c in successful.columns
-            ]
-
-            table = successful[available].copy()
-
-            f.write(
-                table.to_markdown(
-                    index=False,
-                    floatfmt=".6f",
-                )
+            return build_semantic_graph(
+                *args
             )
-            f.write("\n\n")
 
-        f.write("## Failed cases\n\n")
+        except Exception as exc:
 
-        if failed.empty:
-            f.write("No cases failed.\n\n")
-        else:
-            for _, row in failed.iterrows():
-                f.write(
-                    f"- **{row['case_id']}**: "
-                    f"{row.get('error', 'Unknown error')}\n"
-                )
-
-            f.write("\n")
-
-        f.write("## Aggregate results\n\n")
-
-        if summary.empty:
-            f.write("No aggregate results available.\n")
-        else:
-            f.write(
-                summary.to_markdown(
-                    index=False,
-                    floatfmt=".6f",
-                )
+            errors.append(
+                f"{type(exc).__name__}: {exc}"
             )
-            f.write("\n")
 
-    return path
-
-
-# ======================================================================
-# MAIN
-# ======================================================================
-
-def main() -> None:
-
-    print("=" * 70)
-    print("SeSE PHASE 2 — SCALED EVALUATION")
-    print("=" * 70)
-
-    external_cases = try_load_external_cases()
-
-    cases = (
-        external_cases
-        if external_cases is not None
-        else CASES
+    raise RuntimeError(
+        "Could not call the original "
+        "build_semantic_graph(). "
+        "Discovered signature is incompatible. "
+        + " | ".join(errors)
     )
 
-    print(f"Cases: {len(cases)}")
+
+# ---------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------
+
+def main():
+
+    print("=" * 70)
     print(
-        "Responses: "
-        f"{sum(len(case.get('responses', [])) for case in cases)}"
+        "SeSE PHASE 2 — SCALED EVALUATION"
+    )
+    print("=" * 70)
+
+    print(
+        f"Cases: {len(CASES)}"
     )
 
-    # --------------------------------------------------------------
-    # Validate dataset BEFORE loading the model.
-    # --------------------------------------------------------------
+    print(
+        "Responses:",
+        sum(
+            len(case["responses"])
+            for case in CASES
+        ),
+    )
 
-    if not cases:
-        raise RuntimeError(
-            "No scaled evaluation cases were found."
-        )
-
-    for case in cases:
-
-        if not case.get("case_id"):
-            raise RuntimeError(
-                "A scaled evaluation case is missing case_id."
-            )
-
-        if not case.get("question"):
-            raise RuntimeError(
-                f"Case {case.get('case_id')} has no question."
-            )
-
-        responses = case.get("responses")
-
-        if not isinstance(responses, list) or not responses:
-            raise RuntimeError(
-                f"Case {case.get('case_id')} has no responses."
-            )
-
-    # --------------------------------------------------------------
-    # Load ORIGINAL SeSE function.
-    #
-    # This happens after dataset validation and inside main so that
-    # Windows multiprocessing/model loading behaves correctly.
-    # --------------------------------------------------------------
-
-    build_semantic_graph = load_original_seme_graph_function()
-
-    # --------------------------------------------------------------
-    # Run all cases.
-    # --------------------------------------------------------------
+    module, build_semantic_graph = (
+        load_seme_graph_functions()
+    )
 
     rows = []
 
-    for case in cases:
+    for case in CASES:
 
-        row = evaluate_case(
-            build_semantic_graph=build_semantic_graph,
-            case=case,
+        print(
+            "\n"
+            + "-" * 70
         )
 
-        rows.append(row)
+        print(
+            f"Case: {case['case_id']}"
+        )
 
-    df = pd.DataFrame(rows)
+        print(
+            f"Question: {case['question']}"
+        )
 
-    # --------------------------------------------------------------
-    # Save raw results.
-    # --------------------------------------------------------------
+        responses = case["responses"]
 
-    results_path = (
-        RESULTS_DIR / "scaled_evaluation_results.csv"
-    )
+        correctness = case[
+            "correctness"
+        ]
 
-    df.to_csv(
-        results_path,
-        index=False,
-    )
+        error_types = case[
+            "error_type"
+        ]
 
-    print("\n" + "=" * 70)
-    print("RAW RESULTS SAVED")
-    print("=" * 70)
-    print(results_path)
+        if not (
+            len(responses)
+            == len(correctness)
+            == len(error_types)
+        ):
 
-    # --------------------------------------------------------------
-    # Summary.
-    # --------------------------------------------------------------
-
-    summary = make_summary(df)
-
-    summary_path = (
-        RESULTS_DIR / "scaled_evaluation_summary.csv"
-    )
-
-    summary.to_csv(
-        summary_path,
-        index=False,
-    )
-
-    print(f"Summary saved: {summary_path}")
-
-    # --------------------------------------------------------------
-    # Markdown report.
-    # --------------------------------------------------------------
-
-    report_path = write_report(
-        df=df,
-        summary=summary,
-    )
-
-    print(f"Report saved: {report_path}")
-
-    # --------------------------------------------------------------
-    # Final console summary.
-    # --------------------------------------------------------------
-
-    successful = df[
-        df["status"].astype(str).str.lower() == "success"
-    ]
-
-    failed = df[
-        df["status"].astype(str).str.lower() != "success"
-    ]
-
-    print("\n" + "=" * 70)
-    print("PHASE 2 COMPLETE")
-    print("=" * 70)
-
-    print(
-        f"Successful cases: {len(successful)}/{len(df)}"
-    )
-
-    print(
-        f"Failed cases:     {len(failed)}/{len(df)}"
-    )
-
-    if not successful.empty:
-
-        entropy = pd.to_numeric(
-            successful["structural_entropy"],
-            errors="coerce",
-        ).dropna()
-
-        if not entropy.empty:
-            print(
-                "Mean structural entropy: "
-                f"{entropy.mean():.8f}"
+            raise ValueError(
+                f"Metadata length mismatch "
+                f"in {case['case_id']}"
             )
 
-        clusters = pd.to_numeric(
-            successful["n_clusters"],
-            errors="coerce",
-        ).dropna()
+        print(
+            f"Responses: {len(responses)}"
+        )
 
-        if not clusters.empty:
-            print(
-                "Mean graph components: "
-                f"{clusters.mean():.4f}"
+        try:
+
+            # ---------------------------------------------------------
+            # THIS IS THE CRITICAL FIX.
+            #
+            # The original SeSE function requires:
+            #
+            #     responses
+            #     question
+            #
+            # and optionally batch_size.
+            #
+            # The clustering threshold is NOT an argument to this
+            # function.
+            # ---------------------------------------------------------
+
+            graph = build_original_graph(
+                build_semantic_graph,
+                responses,
+                case["question"],
             )
 
-    if not failed.empty:
-
-        print("\nFailed cases:")
-
-        for _, row in failed.iterrows():
-            print(
-                f"  - {row['case_id']}: "
-                f"{row.get('error', 'unknown error')}"
+            weights = to_numpy_matrix(
+                graph
             )
 
-    print("\nOutput directory:")
-    print(RESULTS_DIR)
+            print(
+                f"Graph shape: {weights.shape}"
+            )
 
-    # --------------------------------------------------------------
-    # Do NOT raise simply because one case failed.
-    #
-    # A partial result is still useful for debugging and analysis.
-    # However, if ZERO cases succeeded, return a clear error.
-    # --------------------------------------------------------------
+            # Threshold is applied AFTER graph construction.
 
-    if successful.empty:
+            labels = compute_clusters(
+                weights,
+                threshold=0.30,
+            )
+
+            entropy = (
+                compute_structural_entropy(
+                    module,
+                    weights,
+                    labels,
+                )
+            )
+
+            stats = graph_statistics(
+                weights,
+                labels,
+            )
+
+            print(
+                f"    clusters: "
+                f"{stats['n_clusters']}"
+            )
+
+            print(
+                f"    edges: "
+                f"{stats['n_edges']}"
+            )
+
+            print(
+                f"    density: "
+                f"{stats['edge_density']:.4f}"
+            )
+
+            print(
+                "    mean edge weight: "
+                f"{stats['mean_edge_weight']:.4f}"
+            )
+
+            print(
+                "    structural entropy: "
+                f"{entropy:.8f}"
+            )
+
+        except Exception as exc:
+
+            print(
+                "[ERROR] SeSE graph "
+                "construction failed: "
+                f"{type(exc).__name__}: {exc}"
+            )
+
+            continue
+
+        incorrect_count = int(
+            sum(
+                int(value) == 0
+                for value in correctness
+            )
+        )
+
+        incorrect_fraction = float(
+            incorrect_count
+            / len(correctness)
+        )
+
+        cluster_sizes = []
+
+        cluster_incorrect_counts = []
+
+        cluster_incorrect_fraction = []
+
+        for cluster_id in np.unique(
+            labels
+        ):
+
+            indices = np.flatnonzero(
+                labels == cluster_id
+            )
+
+            size = int(
+                len(indices)
+            )
+
+            incorrect = int(
+                sum(
+                    int(
+                        correctness[int(index)]
+                    )
+                    == 0
+                    for index in indices
+                )
+            )
+
+            cluster_sizes.append(
+                size
+            )
+
+            cluster_incorrect_counts.append(
+                incorrect
+            )
+
+            cluster_incorrect_fraction.append(
+                float(
+                    incorrect / size
+                )
+                if size
+                else 0.0
+            )
+
+        confident_failure = bool(
+            incorrect_fraction > 0.0
+            and stats["n_clusters"] >= 2
+            and stats["cluster_imbalance"]
+            >= 1.5
+        )
+
+        cluster_ids_serialized = (
+            ",".join(
+                str(int(value))
+                for value in labels
+            )
+        )
+
+        cluster_sizes_serialized = (
+            ",".join(
+                str(value)
+                for value in cluster_sizes
+            )
+        )
+
+        cluster_incorrect_serialized = (
+            ",".join(
+                str(value)
+                for value
+                in cluster_incorrect_counts
+            )
+        )
+
+        cluster_fraction_serialized = (
+            ",".join(
+                f"{value:.6f}"
+                for value
+                in cluster_incorrect_fraction
+            )
+        )
+
+        # -------------------------------------------------------------
+        # One row per response.
+        #
+        # Graph-level measurements are repeated for each response in
+        # the case, while correctness/error metadata remains response-
+        # specific.
+        # -------------------------------------------------------------
+
+        for response_index, response in enumerate(
+            responses
+        ):
+
+            row = {
+                "case_id": case["case_id"],
+                "question": case["question"],
+                "response_index": response_index,
+                "response": response,
+                "correct": int(
+                    correctness[
+                        response_index
+                    ]
+                ),
+                "error_type": error_types[
+                    response_index
+                ],
+                "clustering_threshold": 0.30,
+                "cluster_ids": (
+                    cluster_ids_serialized
+                ),
+                **stats,
+                "incorrect_responses": (
+                    incorrect_count
+                ),
+                "incorrect_fraction": (
+                    incorrect_fraction
+                ),
+                "confident_failure": (
+                    confident_failure
+                ),
+                "structural_entropy": (
+                    entropy
+                ),
+                "cluster_sizes": (
+                    cluster_sizes_serialized
+                ),
+                "cluster_incorrect_counts": (
+                    cluster_incorrect_serialized
+                ),
+                "cluster_incorrect_fraction": (
+                    cluster_fraction_serialized
+                ),
+            }
+
+            rows.append(row)
+
+    # -----------------------------------------------------------------
+    # Save
+    # -----------------------------------------------------------------
+
+    if not rows:
 
         raise RuntimeError(
-            "\nNo successful SeSE evaluations were generated.\n"
-            "The raw failure information has been saved to:\n"
-            f"{results_path}\n"
-            "\n"
-            "Check the 'error' column for the first failure."
+            "No successful SeSE evaluations "
+            "were generated."
+        )
+
+    fieldnames = [
+        "case_id",
+        "question",
+        "response_index",
+        "response",
+        "correct",
+        "error_type",
+        "clustering_threshold",
+        "cluster_ids",
+        "n_nodes",
+        "n_clusters",
+        "n_edges",
+        "edge_density",
+        "mean_edge_weight",
+        "total_edge_weight",
+        "cluster_imbalance",
+        "largest_cluster",
+        "smallest_cluster",
+        "incorrect_responses",
+        "incorrect_fraction",
+        "confident_failure",
+        "structural_entropy",
+        "cluster_sizes",
+        "cluster_incorrect_counts",
+        "cluster_incorrect_fraction",
+    ]
+
+    with open(
+        OUTPUT,
+        "w",
+        newline="",
+        encoding="utf-8",
+    ) as handle:
+
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=fieldnames,
+            extrasaction="ignore",
+        )
+
+        writer.writeheader()
+
+        writer.writerows(rows)
+
+    successful_cases = len(
+        {
+            row["case_id"]
+            for row in rows
+        }
+    )
+
+    print(
+        "\n"
+        + "=" * 70
+    )
+
+    print(
+        "RESULTS SAVED"
+    )
+
+    print(
+        "=" * 70
+    )
+
+    print(
+        OUTPUT
+    )
+
+    print(
+        f"Rows saved: {len(rows)}"
+    )
+
+    print(
+        f"Successful cases: "
+        f"{successful_cases}/{len(CASES)}"
+    )
+
+    if successful_cases < len(CASES):
+
+        print(
+            "WARNING: Some cases failed. "
+            "Inspect the errors above."
         )
 
 
-# ======================================================================
-# WINDOWS-SAFE ENTRY POINT
-# ======================================================================
+# ---------------------------------------------------------------------
+# Windows-safe entry point
+# ---------------------------------------------------------------------
 
 if __name__ == "__main__":
     main()

@@ -100,7 +100,7 @@
       "mean_edge_weight": 0.5782659864741039,
       "total_edge_weight": 6.360925851215143
     },
-    "structural_entropy": -1.4776801447359127
+    "structural_entropy": -1.7628710243872459
   },
   {
     "case_id": "factual_002",
@@ -203,7 +203,7 @@
       "mean_edge_weight": 0.9068878782378637,
       "total_edge_weight": 9.9757666606165
     },
-    "structural_entropy": -1.6096353933889438
+    "structural_entropy": -1.9687686597935912
   },
   {
     "case_id": "factual_003",
@@ -306,7 +306,7 @@
       "mean_edge_weight": 0.871388431252192,
       "total_edge_weight": 9.585272743774112
     },
-    "structural_entropy": -1.6093005644951779
+    "structural_entropy": -1.9599363793655638
   },
   {
     "case_id": "factual_004",
@@ -409,7 +409,7 @@
       "mean_edge_weight": 0.7454867480608466,
       "total_edge_weight": 8.200354228669312
     },
-    "structural_entropy": -1.5977495414143839
+    "structural_entropy": -1.8979946016732754
   },
   {
     "case_id": "factual_005",
@@ -512,7 +512,7 @@
       "mean_edge_weight": 0.7963066275644285,
       "total_edge_weight": 8.759372903208714
     },
-    "structural_entropy": -1.604403563286757
+    "structural_entropy": -1.9243967348408473
   },
   {
     "case_id": "reasoning_001",
@@ -615,7 +615,7 @@
       "mean_edge_weight": 0.5702615321303407,
       "total_edge_weight": 3.4215691927820444
     },
-    "structural_entropy": -1.5806075226627123
+    "structural_entropy": -1.5063959159213705
   },
   {
     "case_id": "reasoning_002",
@@ -718,6 +718,6 @@
       "mean_edge_weight": 0.6351094923447818,
       "total_edge_weight": 5.080875938758254
     },
-    "structural_entropy": -1.417794330214159
+    "structural_entropy": -1.6654625964979655
   }
 ]
