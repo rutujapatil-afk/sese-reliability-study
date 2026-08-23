@@ -522,8 +522,3 @@ If you use the structural methodology evaluated in this project, please cite the
 
 > [1] X. Zhao, H. Peng, D. Su, X. Zeng, C. Liu, J. Liao, and P. S. Yu, “SeSE: Black-box uncertainty quantification for large language models based on structural information theory,” in *Proceedings of the 42nd Conference on Uncertainty in Artificial Intelligence*, vol. 337, pp. 8209–8237, 2026.
 
----
-
-## Project Status
-
-**Experimental evaluation complete. Quantitative synthesis complete. Main figures complete. Scaled case analysis complete. Manuscript prepared for finalization and submission.**
