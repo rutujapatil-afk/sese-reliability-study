@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as follows."
+
+title: "Stress-Testing SeSE: Robustness and Failure Analysis of LLM Uncertainty Estimation"
+
+authors:
+  - family-names: "Patil"
+    given-names: "Rutuja"
+  - family-names: "Siddhartha"
+    given-names: "Param"
+
+version: 1.0.0
+date-released: 2026-08-27
+
+license: "MIT"
+
+repository-code: "https://github.com/rutujapatil-afk/sese-reliability-study"
